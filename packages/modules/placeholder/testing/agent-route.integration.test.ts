@@ -40,10 +40,11 @@ const errors: unknown[] = [];
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
 const WHAT_CAN_YOU_DO = [
-  "root = Answer([intro, detail], next)",
-  'intro = Paragraph("I can answer questions about records you have access to.")',
-  'detail = Paragraph("I can also make charts, tables and downloadable files, or find a record’s page. I can’t change records.")',
-  'next = ["What records can I access?", "Can you make a chart?"]',
+  "root = Answer([intro, details, limits], next)",
+  'intro = Paragraph("I can **answer questions about the workspace records you can read**.")',
+  'details = Paragraph("I can show results in tables or charts, find record pages, and export data to a file.")',
+  'limits = Paragraph("I cannot change records.")',
+  'next = ["What records can I read?", "Can you show me a chart?", "Can you export my data?"]',
 ].join("\n");
 
 const RECORDS = "placeholder.records";
@@ -52,9 +53,8 @@ const RECORDS = "placeholder.records";
 const S1_QUESTION = "How many placeholder records are there?";
 
 const S1_ANSWER = [
-  "root = Answer([result], next)",
-  'result = Paragraph("There are 3 placeholder records.")',
-  'next = ["Show the placeholder records", "When were they recorded?"]',
+  'root = Answer([result], ["Show the placeholder records", "When were they recorded?"])',
+  'result = Paragraph("There are **3 placeholder records**.")',
 ].join("\n");
 
 /**
@@ -65,9 +65,8 @@ const S3_QUESTION =
   "How many placeholder records are there? Read placeholder.records.";
 
 const S3_ANSWER = [
-  "root = Answer([result], next)",
-  'result = Paragraph("I can’t count the placeholder records because access was denied.")',
-  'next = ["What data can I access?", "Can you count other records?"]',
+  'root = Answer([result], ["What records can I access?", "What can you help me find?"])',
+  'result = Paragraph("I can’t count **placeholder records** because access was denied.")',
 ].join("\n");
 
 /** AC-8: a chart artifact, then a change that makes its version 2. */

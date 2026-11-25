@@ -55,8 +55,8 @@ const BRAND_BLUE = "rgb(37, 99, 235)";
 
 const WHITE = "rgb(255, 255, 255)";
 
-/** The background of the "dark and minimal" theme, #030712. */
-const DARK = "rgb(3, 7, 18)";
+/** The background of the "dark and minimal" theme, #111827. */
+const DARK = "rgb(17, 24, 39)";
 
 const shownCanvas = (page: Page) =>
   page.locator("main [data-shown-slide] [data-slide-canvas]");

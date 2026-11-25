@@ -39,11 +39,11 @@ test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
 test.afterAll(closeSlidesDatabase);
 
-/** The starter of Chart on slide 1, answered by the synthetic `synthetic-slides-add-chart-1`. */
+/** The starter of Chart on slide 1, answered by `slides-add-chart-1` to `-3`. */
 const CHART_STARTER = "Which chart can I add to slide 1?";
 
 const CHART_ANSWER =
-  "Which chart do you want on slide 1? I can chart the monthly collections from Payments or the overdue invoices by customer from Invoices.";
+  "Slide 1 could show allocated payments by week in a line chart or by customer in a bar chart for October. Which would you like?";
 
 const VISUAL_RULE =
   "A slide holds at most two figures, charts, tables or images.";
@@ -292,12 +292,13 @@ test("Chart on slide 1 asks Ask which chart to add, and Ask answers", async ({
 
     await activate(page, menu.getByRole("menuitem", { name: "Chart" }));
 
-    // The starter shows as the person's message, then its answer, in the deck's Slides chat.
+    // The starter shows as the person's message, then its answer, in the deck's Slides chat. The
+    // answer can show its steps ("Worked for ...") before its text.
     await expect(
       askPanel(page).getByRole("log", { name: "Conversation" })
     ).toHaveText(
       new RegExp(
-        `^You: ${escapeRegExp(CHART_STARTER)}\\s*Answer:\\s*${escapeRegExp(CHART_ANSWER)}`
+        `^You: ${escapeRegExp(CHART_STARTER)}\\s*Answer:[\\s\\S]*?${escapeRegExp(CHART_ANSWER)}`
       ),
       FIRST_PAINT
     );

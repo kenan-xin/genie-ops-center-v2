@@ -33,15 +33,14 @@ test.skip(
     DEV_MODULES.has("placeholder") &&
     DEV_MODULES.has("slides")
   ),
-  "The synthetic new-deck fixtures hold the default selection's tool list."
+  "The new-deck recordings hold the default selection's tool list."
 );
 
 /**
  * A deck drafted from a description (S7-48): New deck on the Slides list starts the Slides agent,
- * and the worker of `global-setup.ts` runs it. The model answers come from the SYNTHETIC fixtures
- * `synthetic-new-deck-1.json` to `-5.json` (see `slides-describe.ts`), which the owner records live
- * in R1. Answers 1, 3 and 4 stream for about 4.5 s, so the checks on a draft in progress keep a
- * wide margin.
+ * and the worker of `global-setup.ts` runs it. The model answers come from the live recordings
+ * `new-deck-1.json` to `-7.json` (see `slides-describe.ts`). The read, the query and each slide
+ * change stream for about 6 s, so the checks on a draft in progress keep a wide margin.
  */
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));

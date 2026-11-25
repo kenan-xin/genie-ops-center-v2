@@ -25,13 +25,13 @@ test.skip(
     DEV_MODULES.has("placeholder") &&
     DEV_MODULES.has("slides")
   ),
-  "The synthetic Ask fixture holds the default selection's tool list."
+  "The Ask recordings hold the default selection's tool list."
 );
 
 /**
  * An answer's text on the real page (czjw.184): one body size and the foreground color for every
  * paragraph, as the person's message reads, with its key figure or name in bold. The replay of
- * `synthetic-ask-bold-1`, from Ask's panel beside the Dashboards list.
+ * `ask-bold-1` to `-4`, from Ask's panel beside the Dashboards list.
  */
 
 // The development widgets float over the chat's Send in development.

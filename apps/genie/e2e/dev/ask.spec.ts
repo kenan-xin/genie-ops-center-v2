@@ -163,7 +163,14 @@ function agentPosts(page: Page): string[] {
   return texts;
 }
 
-// czjw.188, P18-30: the resend's answer comes from `synthetic-stream-slow-try-again`.
+/** The first words of the resend's answer after a finished answer, from `stream-slow-try-again-3`. */
+const TRY_AGAIN_ANSWER =
+  "There are 3 placeholder records, with SGD 2,500.00 in all.";
+
+/** The first words of the resend's answer after a stop, from `stream-slow-try-again-stopped-4`. */
+const TRY_AGAIN_AFTER_STOP_ANSWER = "There are 3 placeholder records.";
+
+// czjw.188, P18-30: the resend's answer comes from `stream-slow-try-again-1` to `-3`.
 test("Try again under a finished answer asks the question once more", async ({
   page,
 }, testInfo) => {
@@ -184,7 +191,8 @@ test("Try again under a finished answer asks the question once more", async ({
   await tryAgain.click();
 
   await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
-  await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(2, FIRST_PAINT);
+  await expect(log.getByText(TRY_AGAIN_ANSWER)).toHaveCount(1, FIRST_PAINT);
+  await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(1);
   expect(posts).toEqual([SLOW_QUESTION]);
 });
 
@@ -214,8 +222,8 @@ test("Try again under a stopped answer sends the question once", async ({
   await expect.poll(() => posts).toEqual([SLOW_QUESTION]);
 });
 
-// czjw.188, C18-1: the route answers only after Stop, as a slow route or network would. No
-// recording answers the resend, as in the test above: it proves the one send.
+// czjw.188, C18-1: the route answers only after Stop, as a slow route or network would. The
+// resend holds no stopped words, so `stream-slow-try-again-stopped-1` to `-4` answer it (P21-7).
 test("Stop before the first word offers Try again, also after a reload", async ({
   page,
 }, testInfo) => {
@@ -251,6 +259,10 @@ test("Stop before the first word offers Try again, also after a reload", async (
   await log.getByRole("button", { name: "Try again" }).click();
 
   await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
+  // czjw.188, P21-7: the resend after a stop before the first word gets its answer.
+  await expect(log.getByText(TRY_AGAIN_AFTER_STOP_ANSWER)).toBeVisible(
+    FIRST_PAINT
+  );
   await expect(page.getByRole("button", { name: "Send" })).toBeVisible(
     FIRST_PAINT
   );

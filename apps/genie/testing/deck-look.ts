@@ -226,7 +226,7 @@ export const DECK_LOOK_CONTENT = {
 /** The comparison slide: two line charts beside a text, at the 225 x 292 pair box. */
 export const DECK_LOOK_CHART_SLIDE = 5;
 
-/** The "dark and minimal" theme as a deck stores it, the one `synthetic-slides-theme-2` sets. */
+/** A dark theme as a deck stores it, which the export test sets directly. */
 export const DECK_LOOK_DARK_THEME = {
   background: "#030712",
   text: "#F3F4F6",
@@ -237,5 +237,5 @@ export const DECK_LOOK_DARK_THEME = {
   logo: "dark",
 } as const;
 
-/** The theme request that `synthetic-slides-theme-1` to `-3` answer on the fixed deck of `slides-change.ts`. */
+/** The theme request that `slides-theme-1` to `-3` answer on the fixed deck of `slides-change.ts`. */
 export const SLIDES_THEME_MESSAGE = "Make this deck dark and minimal.";

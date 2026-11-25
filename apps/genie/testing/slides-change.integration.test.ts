@@ -332,9 +332,10 @@ describe("the agent panel on the deck editor", () => {
         ({ tool }) => tool === "list-datasets" || tool === "slides-change-deck"
       )
     ).toEqual([]);
-    expect(JSON.stringify(await answerParts(session))).toContain(
-      SLIDES_OUT_OF_TOOLS_ANSWER
-    );
+    // As a person reads it: the bold key run (czjw.184) shows without its marks.
+    expect(
+      JSON.stringify(await answerParts(session)).replaceAll("**", "")
+    ).toContain(SLIDES_OUT_OF_TOOLS_ANSWER);
     expect((await titleSlide())?.undo).toBe(0);
   });
 

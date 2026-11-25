@@ -49,8 +49,8 @@ export const ANALYTICS_HANDOFF_MESSAGE =
 export const ANALYTICS_HANDOFF_TITLE = "Receivables watch";
 
 /**
- * The three panels that `dashboard-build-3` to `-5` add, one per call, in order. Those three and
- * `dashboard-build-6` are synthetic: each change call carries `progress` 1 to 3 of 3 (P15-23).
+ * The three panels that `dashboard-build-3` to `-5` add, one per call, in order. Each change call
+ * carries `progress` 1 to 3 of 3 (P15-23, recorded live in Phase 21).
  */
 export const HANDOFF_PANEL_TITLES = [
   "Unallocated payments",
@@ -66,8 +66,11 @@ export const ANALYTICS_QUESTION_MESSAGE = "Show me the collections by month.";
 /** The question that `dashboard-question-1` offers, and its two choices. */
 export const ANALYTICS_QUESTION = "Add collections by month to this dashboard?";
 
-/** The chart that both answers make, as a panel (Add) or as an artifact (Just show it here). */
+/** The chart that the Add answer adds as a panel. */
 export const ANALYTICS_CHART_TITLE = "Collections by month (SGD)";
+
+/** The same chart as the artifact of the answer Just show it here; the model names it apart. */
+export const ANALYTICS_ARTIFACT_TITLE = "Collections by month";
 
 export const ANALYTICS_ADD_ANSWER = "Add";
 
@@ -80,13 +83,13 @@ export const ANALYTICS_SHOW_ANSWER = "Just show it here";
 export const OUT_OF_TOOLS_ASK_MESSAGE = "Change the logo of this workspace.";
 
 export const OUT_OF_TOOLS_ASK_ANSWER =
-  "I can create charts and tables, but I can’t change the workspace logo.";
+  "I can’t change the workspace logo, but I can help build a dashboard.";
 
 export const OUT_OF_TOOLS_DASHBOARD_MESSAGE =
   "Make the panel titles bigger and blue.";
 
 export const OUT_OF_TOOLS_DASHBOARD_ANSWER =
-  "I can change panel titles and panel sizes, but not title font size or color; I can resize the panels instead.";
+  "I can change panel titles or panel sizes, but not make the title text bigger or blue.";
 
 /**
  * The filter request of `dashboard-filters-1`, the filters the one `set-filters` step of `-2`
@@ -108,7 +111,7 @@ export const ANALYTICS_FILTERS = {
 } as const;
 
 export const ANALYTICS_FILTER_ANSWER =
-  "Collections watch now filters for Demo Company and the last three months.";
+  "The dashboard now shows Demo Company for the last 3 months.";
 
 /**
  * The view request of `dashboard-view-1`, the view that the `save-view` step of `-2` saves as `v1`
@@ -125,7 +128,7 @@ export const ANALYTICS_VIEW = {
 } as const;
 
 export const ANALYTICS_VIEW_ANSWER =
-  "Saved Month end as the default view with the current filters.";
+  "Saved Month end as the dashboard’s default view.";
 
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {

@@ -2243,9 +2243,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794474944-U91ubfKunNKCykpZw87w",
+        "id": "gen-1795638490-rsRQ5D18ndruFaZ3Ua24",
         "object": "chat.completion.chunk",
-        "created": 1794474944,
+        "created": 1795638490,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2257,7 +2257,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_EV9OW1MFyxfGnAoIhl2y39jU",
+                  "id": "call_400ee5a127c3421998c6bdf339b6891a",
                   "type": "function",
                   "function": {
                     "name": "list-datasets",
@@ -2272,9 +2272,9 @@
         ]
       },
       {
-        "id": "gen-1794474944-U91ubfKunNKCykpZw87w",
+        "id": "gen-1795638490-rsRQ5D18ndruFaZ3Ua24",
         "object": "chat.completion.chunk",
-        "created": 1794474944,
+        "created": 1795638490,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2298,9 +2298,9 @@
         ]
       },
       {
-        "id": "gen-1794474944-U91ubfKunNKCykpZw87w",
+        "id": "gen-1795638490-rsRQ5D18ndruFaZ3Ua24",
         "object": "chat.completion.chunk",
-        "created": 1794474944,
+        "created": 1795638490,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2324,9 +2324,9 @@
         ]
       },
       {
-        "id": "gen-1794474944-U91ubfKunNKCykpZw87w",
+        "id": "gen-1795638490-rsRQ5D18ndruFaZ3Ua24",
         "object": "chat.completion.chunk",
-        "created": 1794474944,
+        "created": 1795638490,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2342,9 +2342,9 @@
         ]
       },
       {
-        "id": "gen-1794474944-U91ubfKunNKCykpZw87w",
+        "id": "gen-1795638490-rsRQ5D18ndruFaZ3Ua24",
         "object": "chat.completion.chunk",
-        "created": 1794474944,
+        "created": 1795638490,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -2360,20 +2360,20 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 6207,
+          "prompt_tokens": 6253,
           "completion_tokens": 15,
-          "total_tokens": 6222,
-          "cost": 0.0004218,
+          "total_tokens": 6268,
+          "cost": 0.0004241,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 6176,
+            "cached_tokens": 6222,
             "cache_write_tokens": 28,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.0004218,
-            "upstream_inference_prompt_cost": 0.0003468,
+            "upstream_inference_cost": 0.0004241,
+            "upstream_inference_prompt_cost": 0.0003491,
             "upstream_inference_completions_cost": 0.000075
           },
           "completion_tokens_details": {

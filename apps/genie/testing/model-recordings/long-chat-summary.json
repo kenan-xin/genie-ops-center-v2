@@ -29,9 +29,9 @@
   "response": {
     "status": 200,
     "body": {
-      "id": "gen-1793369875-Xe0lqiXMvbzSFK323D0t",
+      "id": "gen-1795641262-y3mYRmE2z6EudUr6kW3h",
       "object": "chat.completion",
-      "created": 1793369875,
+      "created": 1795641262,
       "model": "openai/gpt-6.1-terra",
       "provider": "OpenAI",
       "system_fingerprint": null,
@@ -44,17 +44,32 @@
           "native_finish_reason": "completed",
           "message": {
             "role": "assistant",
-            "content": "The person asked the assistant to remember that the project code is Harbor. Then the person asked what notes 2 to 16 are about, and the assistant answered each one.",
+            "content": "The person asked Ask to remember that the project code is Harbor, and Ask agreed.\n\nThe person asked about notes 2 through 16. Ask said each note concerned the plan for the corresponding week.",
             "refusal": null,
-            "reasoning": null
+            "reasoning": "**Evaluating week identifiers**\n\nI’m looking closely at the figures again and questioning whether labeling each with week identifiers is permissible. It seems to implicitly convey the week number without actually stating numeric facts. \"Ask said each was about the plan for the corresponding week,\" which feels reasonable. However, I note that there were references to weeks 2 to 16, but it’s not clear if those were genuinely opened or just mentioned. It's a bit confusing!",
+            "reasoning_details": [
+              {
+                "type": "reasoning.summary",
+                "summary": "**Evaluating week identifiers**\n\nI’m looking closely at the figures again and questioning whether labeling each with week identifiers is permissible. It seems to implicitly convey the week number without actually stating numeric facts. \"Ask said each was about the plan for the corresponding week,\" which feels reasonable. However, I note that there were references to weeks 2 to 16, but it’s not clear if those were genuinely opened or just mentioned. It's a bit confusing!",
+                "format": "openai-responses-v1",
+                "index": 0
+              },
+              {
+                "type": "reasoning.encrypted",
+                "data": "gAAAAABrB0-1IU7L9clB7k5Nxxayzdycv5HLhLmGrDaCl1Uh0m9I-f3inKFmxqK-1xmSuThtaXeccD4unsucsnfSAFAOT-11oMdgrfnvEzfIgwRH9Oamu6UdbmJWzn3S5Ja7w0FQTsIkCIuZsSHwHAnvrCgES-28S5A5EOeN70U9eukKoOsrS-X34WS8VR-O4yqACJ8SrcF5QYMp_04eK7laiZxif_zmYqilvXYGGU2UGFOYYr-fIhocNWeTfBOjjVoo8U-76J7secDPG58cLE_V8W27A_p1iUivwkEvTBz-1PvZXImP4MSnY7KEhs8t8Mtx0cfxLjDxfMUoWi1ovzrc4VzWy6lO1uGXOEy2XjPNUIXL6RmsDCI16hfW5BwbAWV6DiSQF3RyrPeCTf-0WP0uU1iD4YyjVhBtoUjeaGfM5URTDXkCBamZ01TxMM9eRl48z-2tnvKFydiynvKoAJt4Ew1rfeOr5IZPc5xFDVya6D3Lk7fESFjF2Ae2TOHQFE_RIN44K4wZX-adMqwl6SwXWirzFSevJAUsBAsEByrnRqdimqV7PZoc5IFQ7lOvCJogANPrFwdxCNIeZVcw2cgTyZA64TwFNjT1teAVqvPUA37rKJ5JXaMQTXt5R4mhweVxlFd6YTYnmkoGKQqvNdDBBK21HioNU5ZzMSOqTq8HxB3E6hpyracRlvTcvqqpC5MizV_P91B636oNhQ7UWUgoBZuh9JoF-0R855EVpMCoxz6rqVjPtgdYgqsdhk286ZT3dMz5Bg-f98r7MdYyNnLgBZvXpDXGTl7T-YdhI0p4gqIWDqj607bK6tY6bQ2KKAYJzD2Hi00W4tSmla9v1f6r6gif9H9IHfPSBJughGe__mOL1KjnjQ6YrCoDMT9T84TY8ineXmTi78Klr0Us_SLrPdSK7yt8qGMRYYujaIvjT_VafOwhd02-G3D9IvFyHsj08nOuD20lgVf_BrRqaqp7jBFVW-vREpvzH3yEmdYOeUL9Y5MK4vYdxknKQlq6k93WFUlFchbI-7hwkiBJEudJIf5zG-0fbx2DPaYkZ6cgWcDc2mVC9R8xE_WlKYJB7BVs6ZKYOtPaSRyJabsnRxclNISj-7bTiYKhKO4stiz7jKyvJAzDSfU5NJ9f1pCHN5RMZUfHvqHt0vW5FZPbq5Syo9uWz6bFXIQRc7XWAPVQVYF218mDoeNMLAdVJZ2qc3WVE13kNnFlyOmqx5MEInpT6JvdNJ5HDLJJ_PhycX-x6GsiwVPtxbGvxVw25pIabCke_KwBhrG4Pg339O5LvpGaeUmkv1xuV5gBrrpMFZOMzHaEjCTuwYU3byH4uNE7cQZxVf-0-3_JKp8ZEHwmLRhMVuswo-kgWRLugdqQMnuV5XuvGeXoLsfoPLmL0xCB_asn2uHnMqmp0mYyLs3gvXXZO7zrkxwrDzVzMsIlZlb4_CLVrS1BQXd9fHZkAoCOTqdkA0aPhodj0aGFmR2kjvCct_MnLJuHt0ne564fLTcs-G3ONHYFhiEzeB3LdXzTZaI6wJzxPiJbsENo7EJW-4_5r5ono7UGiub_5Z0xIWX-LCy-1VfyQ-YJeizmSMqbyfwRXgltEARc-WpuZUXGina-UhYn7h22EbDnpfyPahdV-St_qsL4zT-Uui6QsD6KecHXc3MHr9FYVt9ZoTvA0-aZ2DgfZzN3ShOe4mJXdxd_NdhRwxR7KNaHurfA4_oe0wXBzrypwhXD-91woiNbj4ZealBUlvnp43b-PSGpLe2zWJojq5lEuB-8w1h8U8zzPzZs-7DCBFNGulpepOpSxPokaOX0bVWvTqLIT4LQCRpMxdvLZAagbahnhYaY4x01rbQZUf6EUzsWDWbYKc1k_iWsC-g3uVrzyuOQIyKHBLSgn7NkJYRTmh5vxmIb4hpGppYpYmEEhFQdZeK3_05cjVj5PMkADgp2HeeJlTJCGE8j_HgBb0W1iP3jy9I9s3rUAEzs23iJXWE2Zmm6IlKNXXPlEuQ-sO9JYHzAUpUiH-RBiamTzA8_96iZtJp9LvJgk6eHTPZTAbFsz0r7HpFBCCLKwqchT9z11lF49v2EMFE39eHt_3ruexWX1lRJfujrPduW6X147xhWnWrAbleFTmBNkpFIRSeu6qqfHnrmcdoxfQu6rxM7IUQ3u0OiwHthpE1eZs0TKdmpweatSKfCWa3Mwm6PYM3IZkBGhmquLjkNju9ZT9VanF3ZBegIwrHDmoBDMqzr_TTnmfh9lJokn-obDG0k6wJ_xWzRTSCyQH25ihLivuyFevRbLMboEWzIHep8WNZE4DH5smg3ppMlFIodODspseldCHzsMwJI_0-cbFGxLSKFDb0G0bgBMLi-naYG4AULTwYBQbA4LrU6eS0-OfbaIAQdHXMR_2EugdonJSS9y7u7O2YyKhMqzLnRkq91-18yiMUOAhc86h5Oii56UHvUs4ECvLwm3I3j3HEBxIRzHQWFV_axRoV21-2fyRHvxQdSVR3uLfWNFf8hq-2rM8Tx9G0ZyaB3sKBXXV5MNNLDRzNki1N7RQMJLegZhbDKbGkWYwCkVvAZelL2K90_tobDE7kLo_ddfhEopvc0hSqNsgV5BHQmSvBEVh0WG6ZWefDLao-HwcGfFSpWlgRLIP0mO26MthYBbQ97ygVozrjft_zG61IPnXakf_qqNpM2p61DOTZv6PpEtLnhsXt6G6IBED29CvFulpb_7pO63y8ty8uME61tHuX2tn-ZVEV9nlOJa7Whr78rZvFA7xNDBv7TotHQT3XUykfvkyhsntlMhTTJoe3FoKL3dS9CYmMVpNNgKh47OqMgSl0BoDlmyYRF1N-LBrQD126R875nZEe8etfKn4rql2ZNRXJvHjBSvB86mXe7rO2mXw6gf4MIfmpygQOlv9MX81u3nCOmgk0ludQ3IEx2tGhZhAbPuWTVmGPWyEMRzH59C7WeTNjL5316BJV1cePlrbU4raWR2nrC8V9Fi8xTGTSBazdJ715rrI5sWfdIdxIhsssZ0OS_LtIN9ipEPYGiTmZ3odbOAvgl0RWN2PEoo5u7eM62bVuz2-2K-CQ3hlCuEyaBrd_qnp-BYR3-nPHXvNUBL22oqUZQ8o8_4Ca-_rw3ktic2eGa4GKiuo3Y0JUIVPAJxB1s1jw3c8NA46_UULd_oyGrQr5IpPRojxPYSPqNxAXRUBp6UZR64bIFK7d6GYvPD-brV9g2Wpfb7RvJka5UwrEEPwd09cM8mdvZEFTt9Pq9VwoOadNIYHrFOL1GPXEC_7yH6BoEvJTvz_YHzblljoKDClqkzrBlPE7N7cwQH6wuEZ9W3y9tGzboMIgT_MDWrNECUnNNdJY90MAkMAU5uoYqEzXXRUgfzdCOUxEdz6Ugsv61_oiYQJ4Jv8qhAkfDxJxGpAjz9oslhQSs3V11jVC2_B1pnhaRaqMtO2kUdRCNjU48hm291pyQe4kx5F9fqjqtiU18MLMgziHPVWDL3No9WQMF_N7qtIla3R6vThahBrHwSwPQmryMPTriLs0qPNJUVoItrFs46CA6IJM5RVmI76I5dHVMVMIfC19_HRxDui0h3n8JhTcqEZn9OFgLmUhQqfbctt7GRodwC3YXe-181wMiSRyz_EqB1N7LFExZQasvIjx0W_1BxtDVm5BCsT_Rb44eIzk70UMlBDpFk51HRPpyHFATXROMkMyzKfK-ZHRDFqvPLwODQqAM_dWsv9nUZEuCLKKc7xCFQfypK-tKWOuYSNmasMlg7CH79Ox5ZwrzFAbfIoBf21O3l2vFiKxoAOM1GcphG8hue14tTwMiqFbVzmqVCta04dVNc-hV8NIpDHA8j8LIr1R0ghNwuOzs6nH9grgJAA7h4TW_pJGYe7tArmTgLa2ur9VMc25N6U77GRwmL8okqC2vzbp927gsQYsQWR_U68Ns4K1hB3m_UHfInhdOwJYuJgUrtcqN1bCjdP933cOYlpJSchzMWZUshZX_xBLDDV0Nj8JSEyLU7XQq-QsUgmIXRZxknWbMj77AyEhWnN7fhlLzJiWchd8GTP7Cxn5yh1-WRGKxn83cscoLBjuQ9sU7P-B4zFuITFeOsWzonKBS3WyaS7gq8-a2s-KTw4vFTVWUY_0ZjWwrdOre8uKRaBEKclJ03cEchIH5b0F9hlDTGZofywxEGE_SR2D2ObBIbZDbkMI4afyS2yDgZGBIedJwPVMFuMuf7zrG1QlOP7Yz4awPCVbwOcReHy-F07GaAzflwljjVV5wO2tRlvWqFeE1cKp6CJ_DoGU8zHWN5oSeqfbmgBete4PEfZXjrJj6whEiaM1wiN-nxA0rYXQhwnw7bWBI7_W_En9QFBEvKjp5psrRNrlrmrKPAGjrUuZraOGjy5NElBnzhrGa9fOymUDwGeWpAr5Ji4aFThrt0DuApyHJp5MxsaUcTDrGhsx3u8El56Yul7CRvDdg5w4ynm_GPWN4tZX-LaYnpFTUULsUwiYLPMCC6JFatymut8TJUALzLFQcvAYIe_Cy3u5YDAKvw0Dp3uWY-uKLlZp9Gj9DSyDw6C7PnLb-ULGKZ1zq3kAAtqmvNUmZL-XYJsvn0LvlqXQmAzsp62lnAhxchEvF-9HTXID149cUjO2fT1_DoDmj6V_lM5JCuvKTJIAc_aeKUXLDk0dfI64dHJCWuHHQNzTQq83vlOXmX2UUGteiH9PMZYG9U4PJr0IWdRzzqjPKnREh8liucJCt-Pg4BZjqoW5rneKtfz62uUAZeItxqa_x20AP2buwujvVMfAQJfKhZG160Ru4C_bwJkR-N8YVdmv2-adj5fSHrkgsmXJ93yzJhBBSr0T8qvxMOuYz5lMSety5H8YGE-DaXFT4uXzvyBMyUCfB2Wv1g_k54Ni5YnZjUbycWBLhHTOB8TN4D7PYqOV9Nco3-nRfV9NoXdjBfMjIYXXchBh7wHbOCGfhT0wEaf0vOfMsCICr48Uwh8e42a8hj9xlJxWQV5hR2S3C9vkfoIhv1pEGneQxQMPyUHcxw95PonYLpRYa4JhK9rk=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                "format": "openai-responses-v1",
+                "id": "rs_0a60931b93f2566d016b074faf9cf487d1a8fdecbac0406b25",
+                "index": 1
+              }
+            ]
           }
         }
       ],
       "usage": {
-        "prompt_tokens": 9,
-        "completion_tokens": 6,
-        "total_tokens": 15,
-        "cost": 0.000039,
+        "prompt_tokens": 662,
+        "completion_tokens": 290,
+        "total_tokens": 952,
+        "cost": 0.002112,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -63,12 +78,12 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.000039,
-          "upstream_inference_prompt_cost": 0.000009,
-          "upstream_inference_completions_cost": 0.00003
+          "upstream_inference_cost": 0.002112,
+          "upstream_inference_prompt_cost": 0.000662,
+          "upstream_inference_completions_cost": 0.00145
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 0,
+          "reasoning_tokens": 244,
           "image_tokens": 0,
           "audio_tokens": 0
         }

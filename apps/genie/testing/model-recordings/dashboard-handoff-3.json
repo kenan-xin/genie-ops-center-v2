@@ -24,7 +24,7 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_Sjn1kQEWsK8NBRRUCYx3mjIE",
+              "id": "call_09df46cb87674cad8439a9cc45e8f023",
               "type": "function",
               "function": {
                 "name": "list-datasets",
@@ -32,18 +32,18 @@
               }
             }
           ],
-          "reasoning": "**Identifying datasets**\n\nI need to focus on creating a useful list of datasets to hand over. It’s important to clearly outline these first before providing any further details. I’ll compile a brief but informative overview of each dataset. This way, it will be easier for anyone reviewing the information to understand what data is available and how it can be utilized. Getting this right is essential!",
+          "reasoning": "**Planning dashboard handover**\n\nThe user has requested to build a dashboard but specifically mentioned handing it over. I think the first step is to gather a list of datasets. Once I have the relevant data schemas, I can prepare everything for the handover. This way, I'll ensure that it's all organized and ready for the user. I'm focused on making this process as smooth as possible for them!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Identifying datasets**\n\nI need to focus on creating a useful list of datasets to hand over. It’s important to clearly outline these first before providing any further details. I’ll compile a brief but informative overview of each dataset. This way, it will be easier for anyone reviewing the information to understand what data is available and how it can be utilized. Getting this right is essential!",
+              "summary": "**Planning dashboard handover**\n\nThe user has requested to build a dashboard but specifically mentioned handing it over. I think the first step is to gather a list of datasets. Once I have the relevant data schemas, I can prepare everything for the handover. This way, I'll ensure that it's all organized and ready for the user. I'm focused on making this process as smooth as possible for them!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9Yhd3mr4YTBnvtHdn2G_Ky1angFsbE6BhroYddw27nNJBaP1c8Q_JwfO1c_L64uu213w7D-OTqwx15_XhU-mcrH-rm6oIBbO8RrA9xvfRhuehB6Y9FlihcIfx6k2q2hgNqQjQ8ulxQtl7vHVJfv7a14Mhq-_qvz6jX9sRuejBCOQLzDqz92Tg3Og1IE_hGe4_COnuxrv9dUEGJVipRxTVUvqJaaboc92_H0akOeijIb-F-3PblIivHghIN0PSvhv29hiIDafEVZ1GvPcujIHnxOh8vu0qjvUz4ZNIybp8rCrXMOPDEuHj4OGGcchutzyP7f1d3TKdvjXYc-zq4UNrAlJv0C-WeJZZANs9OPsq8f7pFF3-_-KiqK5Z7XODClbYk7P8VYHE0cZ3M_8wgrNFkMUM3ksbytX7xWUf9H09W2tn6gVcTGqtYIlB-L4Ai61rV0urv_yZ3_-9GpNY0aAJQiDmYch8ol9QSJraGCHPa44tvMZTQhfIeHH9A2idYttGutl-FEaHehof9YJVHmjER9I98KzmiJJ-XyxuHTf3ey5KKG14DtMtmUuJEP1WBrjz2xR2PTtl912xORAFp8QwFFc3kKxphMHzr-2_zV5qQOYKDxFDjt9VbcYMbl63-CIiDgp-wNV2VFUMb2dVRND8S1aCHd1CIElcnNbvmN2gpSI13fjhyrLzsw2uGyDCGRUM5JJwALkYuty_5e29v9GdKhCYIlN4vECDpW9AMvjMb0iU3hBAWV68nxW1RjWJcs6PontsHi844Nvi4XMWqGzv3SFl1dV34pxCxxuoCe9nrbC3vY8V3NaYMyorHQZ4zlpQttQ08AzHBsneEB9TnqW_oY4qIighIKK1ksJv06OkF2ccumeeYCmIOycvjDkz0FnSfvoxeaQSunuDs5eTzdziJMMKdnoARnrY0v2oe_ynLNWiSTHye3aPqjBbogdutLULffvk7MIo9mXWZHusfSPOi0wmy30UWBdYQl7fi80PfhQEaMGwQdXYD1rvbdWSrR_bw-9Nphzmdj8xgWnlRtEUe4SPcGQnvnAXZE5swJZLc18Apir2o4SWUUefO0rpdTFWYj17QWqT92eZ3AUreT57YJh-CgJKBP0lx0NGkG-P8dge6knaeCQfo78JmeuoDWkdZNbJ1kW0xUvzWzZrPxTxmC7EWGa08IS9KNpy0A1muaRnzkwp6PcC7MxzZ309yv9z-gReOP-PFEVKKRifmraWdR_QPLgKUjGCDwOkd7zePXLy-iwpgf65gz-_jIrBuImauppBihx-HgrF1al1BObJOPDifW60boDcA52dZApfmUJ15tvMJKmUzO_I8k_uZf543oDZWSFxjEZIXeK2yLR2afppU7zMxXlz5JPFNbaqshYlglRRqlLzhdGnDDGUOz41_roDXrva4WZYRYh7xRaoUD3NckK2ct1MGTifv6aZQ_PA9GfNWVh62viUH4BAsjAwnjpP-iThdqx85rGvpUOtrjXAwpYK-HVYn240zJsq_xReLC0arxCEbzRHHdcDxKIsNKScGRA1ATe6Ce0XlUJBzp6i6mvRoMMazl1VswtQdEv2stSHmAnrdjIALbCpMGI3q78cPGHNq0HRLXLt1L-XyIgigW5BlVXb_VQ-cTrlbbSZ1UqiUJvV3Zd0Si4itvwHO_1Qkga2ta2bX5WSIcfa8mk1z-XxmVeBauDCE0YBey7EB18G97E5thNvnmGNfZsXmSHakcMcCrGCrwzbD_QxO1FpNYjU6UcQ6hna6PCi2kyJ32_k1_-WSqpxqFHrFcZeZvH3jY-mCQNXaa5rpOHmp7dh_GlU3wyqZHUONYRy3dhpq4yzdKFGoLCpLD86267Z3gGt1wE-G2q_j35_kVnkZ38qKltw0NgqynbyclGvA3B0jifsRBpThpRuoJSTEvkiKl3MmiDA7JMxd0OPvCyH8wv1GVydO63KkiJxLaP4chjiWlzbtxcBVZCXUn07pyZssKuBk9sgsiH8BDgCMUYN1mllB7KlDnEGPld77VbF9PzwMfVEXriBaFWfqjcYSoOZ5_lX66hTBDubuZM8m_PfEhUsQ==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0f2b3ed9c8b08088016af5885c091087d18a50e3176d5d2a74",
+              "data": "gAAAAABrB0IhXKBAswh2cnQcDULPdOJ1asy9cWaLslwLsDH61m-oTIwZOfp_13PpXcso6gHExDxtfVwvLVKO98idp2oK5vZlCHghgRy7W-_4eUUpJ8MOvn6VWo-RGnU80ksV8VHR3Rh-a-ej2M7QQ6lL7ZNStHL5tdctbpMVsZN9Iv9x2Bk8erjrzFP_fByhmwTS7xeGBbmyFiLardpzg0BQt5lV8nd8a1AFiJbuUK-MM9GzDghAeCtVVIILlBa97MHuBKpSetn2lWDDLCqWuxQZOaro95VJzR8FnuT9d4hufC7v9ZNk60d7DpPOfYY9XHip302mDHsHignGsA9-8NjJSVm7wQMXiurR-OKjxN85PZfmKfsqn9L4WZlrFF0kTlkBhZx1TOxP9lF0AlvDgUe3LEFU1Q3T7avjwz090mCY0fUJVts3Ae3nOS2UVTAJ-x61knuc_i5MH50-YI1bUIKZ4qUfYTJSOFi2fw7ubjObkMJzir-dxTTHXpwrrauKEdchds3OpnLD7zDE2-UNW0NckLhTv-brsXMR_9vYtx_O4OuAIU7IyZuSISYHoNV9yGQmIsX5fjTk2UZArSpgqZkYz8xDEYyzNyyVmW-ccj-nIPagjDwimbd2ueFAcBwiKRc8HuFG4yZCT2tgcmQ9Ic_6nHaB3-Z2rlBSFaqnsoHyPHcO7WCBtT-UMA2TkpF_gdBeUFJpOdaiXOILwuI3DOhdTC8U8a-QLdRnABADdiUOqf_B4qF-T-h_rXO93IqXOIVRKDOaHR1sNf1OzFHQRkyws3jIvEuzzefBaqX_wF4pPr344ELaQGMV34AOvxq0nVZV0jcwa7aYT69YJGgCJh7dwpsMaVmcxotVPuA8KFkEy2z_Mnpgos-b7p04ma_3KyNF3LXmJz7HMsBThEHeSv2Id13-ZxCQEiltJxQCDaYY7CW8YHnoeNhbiNie8C3NNtYSA97nOHT2CR31NQPj3U1LoYRnEstrpUFyhEdrwGfizOvMkC9r-x2Tv23AKhUg2gNPg2hI7y1UAGYTZZp87NBwWxC1uV9Wd33mRdhWUTWFfkA_RvEiFUVXEObXh8maM4EivMAGU3juWdx_IptWki4MQZNgoVuTgb9dXPZqWocsbxv38RrDoYSshQSkTnYYZ-q3Rwc8HzLs_u2_CUIRDnxth0qzi5MyXMCjzqd3dFaW8bhc2IxZyoKA5QUWJ7vT1uA6iTtsUm4Q1iVvqpu0lfttkBGnVbf_WTaPov25E79A5xEuX1wO0C9_2QjbXTnm1wyQl7KMnFFXQ2HaBt5wscf14bRO1EfX3odjhtlhSf-fr7g96VF9xhvll-7HY1nWXqsttcTOp61U48lPNKTjrP4iO2f4kUvbuIgwR7V6V7jvpx4zIwo4hcimO5hyLyX9tHEAu-aEps0GIxM3HtO9AFRiMrid8vF0wj8QKr9-qmArXqoIG7vwsJy4Aw9L3Dgl2KtBW7V5Xw4hqadA3QWbctI6lj8iGYA5t1J-gqImWgDfKNiHbJdszWbMPtGtl3GZH-lFKvY-l15CmyrhO20-pflGkcdfKppjS6_pWtJtxR9rktNHe1p4XSEguYjVsIs0g6--FYsRPjDJueXHnQR1N9s25gtSzJppCm-1qZtYz42npWfW9z5KJDWrrN6vZBj7QTkdpTO90pZCkghNNudWNvLU920AKp-MSSgg-G3W2rxq0UtRuMhAD3rR-w9kFmIpFhhC2e1QhunD2d29MmO0ffqxEwzEMlZq83Pvyp4evbhllKTHwWgBKMqe7K1U81xbkHJu9NLXGyC6xa4gMKm_RIIy2RMfOt6aPcGENfG4W96nNEmWiJ68bxWIXNaVQdurz2naPGQf_cwflGN5tO28By1IUYQJG1H_QoWj5WaOye0ib0Fdj_jL89CPxM48g9a1yFLkQclbWMz0uTOPLLfgSe2tXrQ_kwbpEgXpaanvoU2UMfYiUgNHXsbbxZ-4e3xqErwzmIFBTBbnnaCPgoo0L6iKu3Tk644d8rr8Su9qpT_NSgFkxNA1zsx4l7ODKV-emu1RgoJIw-M3VNs-n3H72eFE4dmqbfRlW25K-mQSMY6TN2TOv5I-b6nvFgtlDvz0lQa0rMigLR9bVqwkC9BMCNlbqAJrDUNbJZvi6U6HeWxHkjg8IGJeIUY=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_09c73cf1106ee5c6016b07421fc09087d193ff35fdb1ab84b1",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -51,7 +51,7 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_Sjn1kQEWsK8NBRRUCYx3mjIE",
+          "tool_call_id": "call_09df46cb87674cad8439a9cc45e8f023",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         },
@@ -60,34 +60,18 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_o7yHAoRog7yaG6infZlxrUvm",
+              "id": "call_01188c6c2fbe4b6f9dbe3da769be63e1",
               "type": "function",
               "function": {
                 "name": "hand-over",
-                "arguments": "{\"artifacts\":[],\"datasets\":[\"invoices.payments\",\"invoices.invoices\"],\"facts\":[],\"goal\":\"Build a dashboard showing unallocated payments, monthly collections, and overdue balances by customer. Use payments by payment date for collections; overdue is outstanding on invoices with a known due date before the reporting date. Keep currencies separate.\",\"notPassed\":[],\"period\":\"All available history through the reporting date\",\"surface\":\"analytics\",\"title\":\"Receivables watch\"}"
+                "arguments": "{\"artifacts\":[],\"datasets\":[\"invoices.payments\",\"invoices.invoices\"],\"facts\":[],\"goal\":\"Build a dashboard showing unallocated payments, monthly collections, and overdue balances by customer. Count collections by payment date. Overdue balances are outstanding invoice totals less allocated payments, with known due dates strictly before the reporting date. Keep currencies separate.\",\"notPassed\":[],\"period\":\"All available dates through the reporting date\",\"surface\":\"analytics\",\"title\":\"Receivables watch\"}"
               }
-            }
-          ],
-          "reasoning": "**Clarifying a brief**\n\nI'm looking at a hand-over brief that involves measures, currency separation, and an unspecified period. There's no factual data until I acquire relevant information. The user seems to want me to build something rather than analyze, so I'm guessing I don't need to query further. I need to focus on passing along definitions instead. This definitely feels like a straightforward task, and I want to ensure I'm accurately following the user's instructions!",
-          "reasoning_details": [
-            {
-              "type": "reasoning.summary",
-              "summary": "**Clarifying a brief**\n\nI'm looking at a hand-over brief that involves measures, currency separation, and an unspecified period. There's no factual data until I acquire relevant information. The user seems to want me to build something rather than analyze, so I'm guessing I don't need to query further. I need to focus on passing along definitions instead. This definitely feels like a straightforward task, and I want to ensure I'm accurately following the user's instructions!",
-              "format": "openai-responses-v1",
-              "index": 0
-            },
-            {
-              "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YhgmXMgM2HIYzNBxrPZpFw71mMQRMqdazyL4nnfyqZTlctA4WAj4ZzoPbYbYd0zk5z0hbpVf9onRqMsSGP5KB4kRenJ2F-sxXU8z2OyONqGW2L204QKYwfyJkiIRssl8XjYXAqqX1FeLTTma4b9obK6d8pcACZLbJlFaqZ2dfMBlmiPoX-r9Z9hFhRSkUSn0hW9ZmlUfkralxHP2_GAnA6BREqEEsfKFSV6TxVU_IY2Bboz_qTfwLPl5Db1tEKSXqUORWEy2z8fK_-PfM0iepwnNGhvg2pumko9WJFJA42mLpeDc7qGjj-o05xwMg-1-9sTO59_ds_oAlGkXPGFQSr89aRKH5qa1UZ4LUo44Ao4Cq_ZSGyLe5_sQa7f_6YXf4r9BaeFcoLSNu1QdXBsCUcCvYJ7w9Q5bFfi9IZokgy_ExFmj9MlGxef_sX7rni3UtunVDR5BPR9Wl9JWfEPkpNxycqhh4soXIJWJpiQkEzRZfPuExposhaVnFJmHcHQN_2sQPO9VazLiD91DzEzVExrvEMxTF5p6HaPRaj9spa8yK1G6jusaiCUSxacl7nz2FGdgDZmMzmm8muyaGDgv4LWSN4WGuV-GfjN2vi2E9uOlsMDwBJW17S9Lj4r7oNCeXGX0MhGd3d0ABOcJK2B35_ps7Gu8yQ1AFYUIU8cUuitqIyomTIXu-auXvGHiSZj7KytIfAVBEUyX8j4CHS6Okr8KvMQzp-fNbq6Nf2ANBk3IiwIi_a2tGU_ROmytiwfSeIJp5qqOtyXMLmuKB8-udyiTqmBMHV1IiqTRs0T_FwKhzJxhGrspQw5TRclTyMeikosF1W5RGreqbeS8X6r0oTo36lII6aUr2yiN0LEKm1_fxJyNnknX_xypsOYeYMvVwxBUZw-6dNzh0V9s-UD6wjPh3KLnl_rLzqDO_Ex4yoQE2VuMexBIhRGT74TiKHxJ_4K9q9Bf16-RP44CQED5vap8wvMLM8h0fu9ehsyu7NP4UPHPFoUZeNfIhfVNUkBTKgJuHuXYGytK8Oc9fVLu3CDO5n-azUSsikqxT35WsN-F0oTEb7X6_NsQfV0NdspZGsOqvP4WvFlCKYoRtZuJd9XMn_yUi_8OMhdEXLMNUhhVsVJKa-otinFee0GMpnFAIwTGCcT_PwLb0Or6_5jgfVNP2fNFHM9qQqs6P-LC5TrrWv8O-sKO5MYk0GuicR1xUVPAuNEV_4wLJ-lYJUm9Ldcv3STMPytPwXP9xAA6p0pQiAWFQ1XdTKiveLOUKGJrspBZv03OM4-rrNG9te1tWw7TiRJESWxSuZaX3LH10PsHxBDalJgUUOkK8Qe0uxWsDDYOaL1tsrJdU1_ydx95YqVJRz4G0YGkrOZGy1313Na7wnW0l1qRlFoD-w6uo-YMLao8YmeMi20eFKsabkZPHWRbIsxBt_PKobP9QlfJWU2NXhBDczw42vk_NorCNvlwkqpLs8fsJ2I5G7em0VAmJGjfipTHziM70pXkWBMzan2KznfxlbxnYSViNzicYJ7ZmhFG-uCR7CoLfzM7JS3xf7DQ5IBurJip6GhmlhCTd7UBMDyn5mgnkCyuoMku_JDKYwZj0-oNWTqYl7Oxq0VLRzTVPzOX6-PKjZ9FEejWUV03vqc4IKF_4oxK8Q3Sy9ef7YyH6tCLwIn9cw6zsZ-tq1Yq77PaUyUqdkt-78N9VmBvFKgBEjM-TdIzz0oAZkagg3lB7qaheVr7qYUUDdhXSI_aMev0zcqSz2g_sJQSgxcP5B-7YInZP2TiSb1Skgsr6oAQ_-oPdxskl6nZbqoQTlfvBIUXfpbeJ1WP3NP5ZZtiN2UazLbSq_zxRmhq2irmBl7tTTRzO0m1M3I-gC5W15pyinYvcmngTUgLRmBTjOmATSnmARJRXBIWuqZ9mWH4s6q1G-jjV2Q--Yj_uaGXf4b0rsgfov4NzNatrmelPAhhNbkmCu297HBv29C8SIoMCgRtdBLDy-8Z5p3pYrnyhwZwwRAOf1rFsx-rPzMCGMI6an7xfl7RS5AA-CVgcEj_i_sFvl91cA6z0URmoKqMzcX3hMhv1kneA9HKUutb3kU4P2jicihzyYRKaUUPGohzff6tn_r5q-ht33c5pD2jza065-Lg4140WsaaZUv9qU7g-4Ncy2UTovnbHECnSPYkKGQoRUgEKc3jLErzfO0fnZ6d_VeWZmGQiXJq3S44tFFult0TBPTNQBRFf1QCnCHjLSu8oNUAwKi70k3Qn9TM-aVXe8b1ZSsns27oFWYB49tx9vJutBcZnvY9oGD2Fjb2xmGvFBKl2jNdGKWBw9tg1FObgoHfuZcLqrREK7hdUMwl-E=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0f2b3ed9c8b08088016af5885f2bc887d19b2c030d0f36e3c3",
-              "format": "openai-responses-v1",
-              "index": 1
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_o7yHAoRog7yaG6infZlxrUvm",
+          "tool_call_id": "call_01188c6c2fbe4b6f9dbe3da769be63e1",
           "content": "{\"handedTo\":\"Dashboards\",\"title\":\"Receivables watch\"}",
           "name": "hand-over"
         }
@@ -2443,9 +2427,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2458,9 +2442,9 @@
               "reasoning_details": [
                 {
                   "type": "reasoning.encrypted",
-                  "data": "gAAAAABq9YhjOiqqoK_MvpiQcL2KFTXOaz_LWtsLIcsghPiacchgnxvGLR9geYfp94uzaMx9c54hHowBvBX6aBgPk2jUGW5LMVCJrq7e3PPU_YsA_JsWRYiy-yQmUkhT_UkF-qq_3z8Bu1mcVtfznasIuYJ2-Xf2q4LtFcF_az-6kP0TpsB-jrsEEzcJ8zs0-NqTXnY8XG1Jy-IWxneAkS2qMMpzXMxRdzRGcgA9vLF6E2g4fbpwFmtcFTrjI9gH8-K4BTBa5za-VLtjnTAjuTsYa0V3kbRUK3va4qpQlfStbgfNOi52SxFgTFq8M8CIA04txutoPj35b3ELpAm9CjEZgpRiRojsSTLk2cp3K7MdgIb6-HtnSRIrH_OoYhLR1R3kaaI3Hsg3ahnnu0VbBv4G8p0aJmpwQDfrTnC0TDJhZ3abEsJ7Amv8f3vbfvzzyWIICoF57CwuPNFqg6h4BaQMEt0QeA-2FTNYpMhbGq6WdLDXaAhoHhhgBNQXQvL8c8QAOzUs9Z_NWgmSSHuHiAik-h71Gf4xnpYb1lg6ebKTL4oHBDiCjVrqNfeKMEmG-B_U0eJe0bqfGNw_XCNFrct1-tTZAn_aDkNYaD7JQ1HTTkrLLSIcgmJEQavXPHH-MvGVBTGLLBCad3jj2fFVZFNigNskp4WSEYFdQu9_AWq-eG_vU-F1V16-Gi7ZmoiqIfnjpuBONQEV1Ud9l1kGwHMudRtamtn7Hxh-IRkleM3xDJI5z0DVeZNOQnfP0oFnbIcBpwqGVgATQMFzVeZR23DWrrJ2UpCLervy8zK6OUpw7TZxtPmzhOOPRiKy33uicXjpEPV1GSepBpYCyGbvuyhqKkvipF0xI3UAQKTe6UcxQkEqMzxNCDNKUFV90WJ7IIbdgCWCc22iDzX3NUMmTCrf1opK2zW0xg-ZT3LdLTpwjRDx52ewd3VLl5GlBsGUZaOYuazFUIphTJFrpNGgKDhUftoLqU4OGV_S_F2yeZZMDi-zczZzX-MCgHCjuDrT1tWG1L4jM8W7VrJ_OMKPgv_btSFdJ5AxpyEypfJnQ81SXnRREtV-pj01MpsvC7vrN98_cIpRtaqJS3kLQ_89CVpZJWcsU9maUl-rCMnbTG8jha2miidHjFFfwdsKJsT3VO0KH95JNY-25j_14QHIIzq2ZrJPh3lgQjxilPCoLg_N-KUtxoJUiIEPR7eyZYq4259AF25QmeEocjgRrC3Wf-xPqghIuiEXWRq6KTj22Ask22uWSiVX0ydV8p6sRR-1DW7rmGE5WuH4PXIqXkXifpvTAjorXW8PJneIRHJLpPg89TNFKcOJ8xTrsxTiA57ioi3xTJzT8ILvllvpdXOHvMgKgqrlr3RFig9SEw6AO5FZwh2ISy1gfQXQ-S_wi9UyIdDpwMqKeENQK7P14egfBEgSucu2_LOSv8czbE1n2NZ3Je09RyU2MI7Mcw2I0ljrUYU03Gc1OI4VkJW_32ifGGUcWSGev3UglvaYEeqgr8iiC0bcAf7fA3QVKTwP5TttQ0OXY-s8EAlA3VGAigvHJbqbPjA_PEyW6FRpBEqrlDmdIiTLntfWulC8M0Oy7aEUpXBGo5ASwRr7camoBt1A2f4S0otfC_cEnxngmZaz37fxjYc3RcAuMigPdjGCtUQRZEwDLpYw6dIc5r-kJM1DURunCRd-Vx2D7Y5zsVKaq798Ge5VwTRR5V-iOrOZwXOvHsBGV0v-5pKMRbkxxqYFHCSC3pqJrlf2zWltE91mlUGFjo8sjlwJcEsD2Sj3aBApvlN-KMJxGx5ETjueCHs7XIvGeLjN-tycprVf6a69pZWbXG1sgXL-YnrTlZoLPp8CZ9taNsAGOrgWwGiOWKasg45S9n8NeplSMDYM6UURTS89yMq_ROx1DcDJTvlwyhakeKIyHtc_tfp2DhhlDCdoOT7Ip9crZkn12dgGDDX08_PwyrI0gOaw5uyR9kloFw777jW2spGYFX5_7l285n_8WGLDfhlndigflGrV-HQNuobfvwFzzQ9LOzjaXnjb6JaIXkD3KxEulQnNseVT_BpJkeTCGCbE_lmvIowCD4WBSQOF1mcopphYJ8E=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                  "data": "gAAAAABrB0Im9axRE_h0O3MTBLTE0vHVKoacErB36s72i8C4BcmBQDjDi1YlqofNj-6NydGh_eK4RyvAqrDH5mn3wmhumk-rRgb9wQqCz29QPwgIOg7a_xfuEs9noHQqUMp5xV3rPcdMu29gTCTzjfJ9MJQHtK1Yb--Wx6_UG83-v30bt1Vmmke6XHfh95FMOTsBvW7u_NSutkEdbYo3AyxrB_fjEY9ty9gQA-ohfhVAlMB48Ma7O0-LVFpGIuOiVVfR9gUV5DT8op_pR5aonpjxhftpHkpsWI_ajrc6hPbnPWhAugsOermrxo2_6eetK3hoSZPiIFWxs4kJtDHeEZkR59BAn6cERAP9PGR0lQhlgPAviCzUnuWxGAYKlFa28XVvy8HzNdQmBs_JC1iDbimudOTKau3-noFE5M3M-emaIUxl1SOJ01QhvTZGYL8nbnfyR-OdQ3M8WWDCH7a7OtJ2oP2anJ1jqh4gMbtWesHLMwZfKvznbSLopQceMLhvG719bXir5tnz99-oePIuf9pISfRa2RGzFLhTgTiIyxlHes2zs3FLeRbp_LyhsY_Rmiu0XrrM63tNsy-dmwQIHLqLTkDMO8oxcrQw3Uj96xLO7dTM1VBNPBVrQBczt4ObgpJBqgXOL4imDa8x3-oauDJzkGQSXivpCvTO_9rl8TYBXQXZ_GQ5DaRwWIIaC7Qe7mDrBj4D1HVavSNnMjNUbD6ZM1RoxzGWj0iRUdTJSAWoTIcgYotcOvUzFf6drtfA0MM66gdty5pMtbvLCo5t9wy4GqgfJEkuU2v7aGwD_o4713tVYcFt6Y0KxXocZ1EllfZegh1Ydhi1xXX00-1i4MzAv8dQDkcVmjn8F3xjggvC2_ssrYsbpqSdV8wNkXQbOMbUK72HEZZ2oZgYZIOBus5ZGBfTxKBsGkQ4vAzd5NFe0Du_F-uSpDAuK0qRjJCLIoa9Sdb9MmAls85wTPP-F-kMOiqlCleL0CHTKcsfTdm4ZDLloylpDDdXO-udCZgnXrmMqSdNFL5ks40t9wMMwKgoc7Is66U4st-3_27VNjqfJLykwl8THhTOBfZFsuEwkhzYkND4XdbQKIQNaX9kuZaaY9htEyD2zsufH77pjyIZwIH3UxmnFHWKhX0bKJWli8TWR_DVtPn_Pc4zRXnOgsEtO-ynvZauebIuzGOgSNReZ_wEwG1BdM-2Pb_j9jHgSNhNroEkqXr7i0iiJCgJJ0L2MgeEGzeDNz9E8wwrmvDsdvzYBV4EUQbvuX1D0vT-r5aHDZFBHyScJbFOHWLel6tHEqZnkIuXYcaqjV0qyVrZFBOMlSK9ZuyMKCOwWPCDAMmeAQ0GVZ2-tP3xgyRy6jjjhZAqZa5hnkEC3WsIyAxEYH03w5AaW87wm-LhKwXvzIc6Bw_a0pXYMRJ1Hfv3y6j8-zP4mn1rYA3HKTI1ZBlB-WCKlX24jAGzS34cKHlMWn2Ad09p3cM4crH-a3CoqJ-tLvPconWMUNdPveNuo2lmp2RlAU2qHq7S9YmYIjg13FFPL2AznNDBXz2qQA86lmihQ-N56Ljs2qOzCu6N7moHHvpq7WgPtfX846mhPr2z9Up0BqWs8SbBXxCIObWzWnlwONxUybRtMorIbVIsx1EXotAwCMkrsGOPkP5lqwDxZVe7lnrheQqObZ4oR9dwEjacgvDzAM4T5BOSJD7Fz16-C-Hl5gcMBzU6jLCUrLb8RoSmeyJevKEdhviG_ldmR7Jup4s0LJ3dZxNIYDFCggR88KPfev784-mCMPiz4Fwtg4QbAJ2_1KmtsbtAJSjbp0ek4tchdLKEqn-Ps0cKm0hQYfdgTQUw33HRdq5nwzD0sV2DS1To7dr1z65Tvx6UXEqiQLBfX2DtnT6AzeOHu4RxIcG9-W94DM9r48-g5soEAbizJRQUezOWSTlVEsPNhlI6AcjbMhT_vJValGYMzsvfT71gBmchXeHvGTGQb0gDcaGL26LxjJMUz553pFSE9WIUEBA-LqTeRwkV34oCKJLKP-2JNZw26YH6dcaoanfqUtLf8qXjOO_trClU931lF6PMJKNRKr7MF3BgqcONrTKPZMlPYRSJdMqObpEhlnDg9o3NdEzCZlnQ3Jrb8PyqXA6iB3lATyhv8LOvKlFJu_kAa6oU_CEP5CA=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
                   "format": "openai-responses-v1",
-                  "id": "rs_0f2b3ed9c8b08088016af58862e85c87d185cd33976e1404de",
+                  "id": "rs_09c73cf1106ee5c6016b0742259d8487d19dac31a4a9e59a22",
                   "index": 0
                 }
               ]
@@ -2471,9 +2455,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2489,9 +2473,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2507,9 +2491,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2525,9 +2509,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2543,9 +2527,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2561,9 +2545,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2579,9 +2563,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2597,9 +2581,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2615,9 +2599,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2633,9 +2617,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2651,9 +2635,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2669,9 +2653,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2687,9 +2671,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2705,16 +2689,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " Dash",
+              "content": " dashboard",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -2723,27 +2707,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "boards",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
-        "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2759,9 +2725,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2777,9 +2743,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2795,16 +2761,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " Rece",
+              "content": " **",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -2813,9 +2779,27 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Rece",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2831,9 +2815,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2849,9 +2833,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2867,9 +2851,27 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "**",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2885,9 +2887,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2903,9 +2905,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2921,9 +2923,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2939,9 +2941,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2957,9 +2959,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2975,9 +2977,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2993,9 +2995,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3011,9 +3013,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3029,16 +3031,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " are",
+              "content": " dashboards",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3047,16 +3049,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " un",
+              "content": " do",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3065,16 +3067,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "allocated",
+              "content": " I",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3083,16 +3085,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " payments",
+              "content": " have",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3101,9 +3103,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3119,9 +3121,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3137,16 +3139,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "How",
+              "content": "Show",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3155,16 +3157,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " are",
+              "content": " un",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3173,9 +3175,99 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "allocated",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " payments",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "\",",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " \"",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Show",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
+        "object": "chat.completion.chunk",
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3191,9 +3283,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3209,16 +3301,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " measured",
+              "content": " by",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3227,16 +3319,16 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "?",
+              "content": " customer",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3245,9 +3337,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3263,9 +3355,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3282,9 +3374,9 @@
         ]
       },
       {
-        "id": "gen-1794476129-kCp0ggZnaKcxgPDnXAXU",
+        "id": "gen-1795637796-mbvYdc13dAzsrN7iYl3m",
         "object": "chat.completion.chunk",
-        "created": 1794476129,
+        "created": 1795637796,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -3300,24 +3392,24 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 8652,
-          "completion_tokens": 73,
-          "total_tokens": 8725,
-          "cost": 0.00100925,
+          "prompt_tokens": 8654,
+          "completion_tokens": 86,
+          "total_tokens": 8740,
+          "cost": 0.00102755,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 8475,
-            "cache_write_tokens": 174,
+            "cached_tokens": 8516,
+            "cache_write_tokens": 135,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.00100925,
-            "upstream_inference_prompt_cost": 0.00064425,
-            "upstream_inference_completions_cost": 0.000365
+            "upstream_inference_cost": 0.00102755,
+            "upstream_inference_prompt_cost": 0.00059755,
+            "upstream_inference_completions_cost": 0.00043
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 23,
+            "reasoning_tokens": 30,
             "image_tokens": 0,
             "audio_tokens": 0
           }

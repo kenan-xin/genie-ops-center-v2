@@ -49,7 +49,8 @@ test.afterAll(async () => {
   await closeSurfaceDatabase();
 });
 
-const DARK_BLUE = "rgb(30, 58, 138)";
+/** #102A56, the background that `slides-style-2` sets. */
+const DARK_BLUE = "rgb(16, 42, 86)";
 
 const LIGHT_GRAY = "rgb(243, 244, 246)";
 

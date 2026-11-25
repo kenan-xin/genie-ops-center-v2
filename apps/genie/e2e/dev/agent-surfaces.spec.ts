@@ -7,6 +7,7 @@ import {
   ANALYTICS_HANDOFF_TITLE,
   ANALYTICS_QUESTION,
   ANALYTICS_CHART_TITLE,
+  ANALYTICS_ARTIFACT_TITLE,
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_SHOW_ANSWER,
   HANDOFF_PANEL_TITLES,
@@ -698,7 +699,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         await expect(
           surface
             .getByRole("list", { name: "Charts and tables" })
-            .getByText(ANALYTICS_CHART_TITLE)
+            .getByText(ANALYTICS_ARTIFACT_TITLE)
         ).toBeVisible(FIRST_PAINT);
         await expect(empty).toBeVisible();
         await expect(panel).toHaveCount(0);
@@ -721,7 +722,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         );
 
         const card = surface.getByRole("button", {
-          name: ANALYTICS_CHART_TITLE,
+          name: ANALYTICS_ARTIFACT_TITLE,
         });
 
         await activate(page, card);
@@ -737,7 +738,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         const sheet = page.getByRole("dialog", { name: "Chart or table" });
 
         await expect(
-          sheet.getByRole("heading", { name: ANALYTICS_CHART_TITLE })
+          sheet.getByRole("heading", { name: ANALYTICS_ARTIFACT_TITLE })
         ).toBeVisible(FIRST_PAINT);
         expect(page.url()).toBe(dashboardAddress);
         await expectNoAxeViolations(page, "artifact sheet over the dashboard");

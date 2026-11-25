@@ -39,6 +39,7 @@ import {
   ANALYTICS_QUESTION,
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_CHART_TITLE,
+  ANALYTICS_ARTIFACT_TITLE,
   ANALYTICS_SHOW_ANSWER,
   ANALYTICS_VIEW,
   ANALYTICS_VIEW_ANSWER,
@@ -211,7 +212,9 @@ const lastAnswerText = async (sessionId: string) =>
     // The reasoning parts can draft the answer word for word, so only the answer counts.
     .filter(({ type }) => type === "text")
     .map(({ text }) => text ?? "")
-    .join("");
+    .join("")
+    // As a person reads it: the bold key run (czjw.184) shows without its marks.
+    .replaceAll("**", "");
 
 /** The tool parts of a session's last answer. */
 const lastAnswerToolParts = async (sessionId: string) =>
@@ -538,7 +541,7 @@ describe("the analytics chat beside a dashboard", () => {
         kind,
         title,
       }))
-    ).toEqual([{ kind: "chart", title: ANALYTICS_CHART_TITLE }]);
+    ).toEqual([{ kind: "chart", title: ANALYTICS_ARTIFACT_TITLE }]);
     // A renamed replay answers any dashboard's id, so the chat's own one is compared (xok3.60).
     expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
       `This chat belongs to the record ${dashboardId} of its page.`

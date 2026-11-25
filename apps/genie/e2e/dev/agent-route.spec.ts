@@ -63,6 +63,6 @@ test("a signed-in person's message streams the recorded answer @no-screen", asyn
     .join("");
 
   expect(text).toContain(
-    "I can answer questions about records you have access to."
+    "answer questions about the workspace records you can read"
   );
 });

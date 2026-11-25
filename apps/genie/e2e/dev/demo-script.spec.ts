@@ -477,7 +477,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           // The result first, with the total (R-44), from `overdue-invoices-*.json`.
           await expect(
-            page.getByText("Five overdue invoices have SGD 27,350.00 unpaid.", {
+            page.getByText("SGD 27,350.00 is overdue across five invoices.", {
               exact: true,
             })
           ).toBeVisible(FIRST_PAINT);

@@ -46,7 +46,7 @@ const TURNS: readonly SeededTurn[] = [
 
 /** The summary that `long-chat-summary.json` answers. */
 const RECORDED_SUMMARY =
-  "The person asked the assistant to remember that the project code is Harbor. Then the person asked what notes 2 to 16 are about, and the assistant answered each one.";
+  "The person asked Ask to remember that the project code is Harbor, and Ask agreed. The person asked about notes 2 through 16. Ask said each note concerned the plan for the corresponding week.";
 
 const asker = (testInfo: TestInfo) =>
   testInfo.project.name === "phone" ? ASK_PEOPLE.phone : ASK_PEOPLE.desktop;

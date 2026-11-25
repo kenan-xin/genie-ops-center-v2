@@ -24,7 +24,7 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_8f3L2OGYqByltT3ywaHe7pox",
+              "id": "call_d2da310a9ebe4ec382bf4af61ee5cbaa",
               "type": "function",
               "function": {
                 "name": "list-datasets",
@@ -32,19 +32,26 @@
               }
             }
           ],
+          "reasoning": "**Gathering data for reporting**\n\nI’m looking to find the specific dates for the assumed reporting period from May to October in 2026. This seems important for preparing comprehensive datasets. I wonder what datasets I might need to analyze or report on during that time. I’ll need to explore available resources and potentially gather any relevant datasets that align with this timeframe. Let’s see what I can uncover so I can move forward effectively!",
           "reasoning_details": [
             {
-              "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YNf7qXoVp5aOBe1U6gcG5ddByi0eLkAyuilX_SxNzYkdKVlCPyVZoMaXKZYiM70nOj0v3P3iVcxyIYjtN1-RDa0bzN6DPTbtQtXu3z4IJ1h5cK-jelv0d68QuKPPIiNGHA1ubUvrcQckIsZ29l6QN0W8_zWe7OUS56_YpUI1onCX-I8PbFcNQFbV6ukK2eVCHWYNH_X92keAfAnwvao8gZB0S51Rug-FHMADNlHZz4_ZuWLBdFTxmDjV41NLocvWQD5LnCN1_BsUSgHbIxx857BOggSY_BwjJgsbpZniLxqEP4SNGUH-FfP2hAXzTbyuENbW5OBG4mLGjnHkaMMi0SPme8LHXp7RiOEg8m24x0ur958bMNVcI2ft-ULWvxvb-ctp9jiHO8yyqYWf3Uei9Pwj1apA-_bPvaiv4lzycxtwRRMJdUrIMass42T5FP06Z-XLpFi0k_lrms8hv_2ddoxuW_vJ3-kDcpq9n9TcQcqFEwJG3GuvdLSyT6G8pr4yVC4OEx8VD4DHCmaiSIud3Stbrvw6sFrKkNeCTVLEqYUZbZuTRXpPqzRjwj9h6BaChlJn7jkZvimM9lEQ0blJKIJy1U8K_hAj3egfgklraZPgwQUsQm9Y0VmyQ_kcxUR23lZT2e64mUnR3hc1Nl8FCjCShShMSUaMtgNaoBDbA5mNMppcdwU4ItGIOaU49wX0km0EQr-fBhlyp-Nq-Ft1fiXKFC_04J83YMvu_sAnUakf5Nq8-miDIhrKo8xc7ZD3JkowqhQZ7m4tT6uhMVyF7bTrwazL-RwvdthQjT1VQG9h2vZpku7tsqx0RxrIvD4pybIYkCyfxyREfcok-gqfJB-4dltb3sXtP2DahuIMQvbyuV3yn2TpukUtffM5oHXBMEGxWdtyyY9-ucwrLKNHoUL7_YoB5g8rX6OnySgCM27R7Wq4eOPc5XFXySZtF_K8LND3PViHWO1-q1Oq4s2-_OitmAcSFjWwslfLeM53PNMgeLzzIty7jtZYjC2ZCP_51zne_w3OV8Lafv_ZsbGixQQsQ20Hw9pNpdI232SbFKewNey8uedpRv14KUT83VDCcGXadz2-jzUxJ_ad9oY-6xtzEw7pcYl1SXIns3HJavm76kBSEY1TLWT03ea7F3j03mPRgojFVoIavAlPwmu1H4RuOjOXu32p9yO0o8C7J6Njkn1ycvzuZW19EcckgN8ypew4mq5ZI2MiJNSEISPHs_6LXzsCMjz1E-E1lQ6O83S9-qwovfqS0Y4URRD-RFnuwBBQfGzvN5RnOocjDkaaexZ4DHR-cQI-LkLZNPYi7vHdb4iYOJfVqwGpH7zv3MPelvkRNn1cLHFC7FPjcTnO0LuK7U-NVlIg8_-iokbdhYmNOHrFu7cHrA4PsU_y36ImM9fQetiJbcoj7O0eZ10HyCKnnG3oQhuqwKOLUjxFOQxhadiNBcrA-hjTBNFa4exAs0Y1lLANLt5501fsHakslC_6f0F7f0IfAgA4_vBWu1vE4-hBOXVOWsihVNFUi07mJSvfvZpl7s8folsuCttFUV-toK88Vx72Mm9qB3uoIlNetJmVbfGEi4ivsSC0I6cVi-a6QK_e_Q7iESr6-kQWJOwcjg3CyGa3qW0DpeIT79s92VlaA579IoE-R2Yzho4ieRZ2wPIQQrd5pIT9qCiMpEsy3lnfRm53SoZNDGdVVHrKPbQpM0tQHJOSSfmK4oSaKg9aJzDHa10OfsMhglXAOkS4-R3VQlzJLuv2nCDXMRtGflGvXc-qdvDw4NYtC9gnOAlqd3xjLpEbIDtp1lO9ZEHavzzYXbcwg68v4A7WZyQOPFp9kdoRukwpmFSecA-3cguNXQwMPWdeymkoD3_yeeR0g==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0f261f8df9e035d4016af5835f483c87d19632964fc6e1f436",
+              "type": "reasoning.summary",
+              "summary": "**Gathering data for reporting**\n\nI’m looking to find the specific dates for the assumed reporting period from May to October in 2026. This seems important for preparing comprehensive datasets. I wonder what datasets I might need to analyze or report on during that time. I’ll need to explore available resources and potentially gather any relevant datasets that align with this timeframe. Let’s see what I can uncover so I can move forward effectively!",
               "format": "openai-responses-v1",
               "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABrB0R-0gYo64D9FMXy4s0-0gJgegLH_xWx8bpfss5FLNaOzw2XM3FSR_7z47YBtWsZ9HKuIWAG5yf2KgWnRakkMx93lubd7UVmG7oJYFfCml-mUWfjoZsuRSR5rg_tV-lyby6PO2m-6nGg2N_N3NOYRAjjVOioAnJtY0rkSDgw6GD6tNFE_rb9ZTb-uleniDLGOn-VgMS1FbH4blc_zGTeNxYho7Jq2ELcDqjkrB67R_SjaFOj2o6YHyAMMkHtEhUuA3C-RrvG7rcvkwRA_r4d2p-AbVEzRwj4BcxoPns5-MoSLZVfCxabTRjKHD70uSuQCxnzRE8uuWpn-6PHr7-_brwFEsdkkh0sOfDxkfwO34RVHOu2lzg52OLUMvkW9wUVhTOFb7dsQ1DqIXam707a1-gGVxSYGuAW3z97nRKfiIIYekEJqlWPcY37Y1fhp-e47z3EXoeqWZZwNa0RC0o5VY-T3FIV1nYmLCw2VBBuxf6DbAtmeQ43TOHEvKmpxbHDepuHUIIvOcXdC4LIyzmyhpSL9yM0owr3HqA6zVMDElO-_agNzuL4xIzoYbt_vqf2wQoajmZIGbRJvM86spE2HLDAGWDo_JhS2iO8pi3q9WNVcOQNjJWwPYjQFHRl_UhFk4p4ajN7MqWuky4ij0jPgeLNWO7sdm7Ne8bUNcuuwpTJUbxsXJnAWzx26Ty8mEgeEpVpAIlDpTjFVRnKf74thTkSZlJTZVLVfehVKrYeFkRaSTalX9TL0lrM6SuCL3A0fb-a9IUHYYwH4V6qFpAo4t6Cs0qnR2xERStmp5mEdo7LeJd3PH5qMeWfm-NAcebLfnDKnbZCBMTi_761ywN447jZEiGOWWzA8oLReA4RKMOPPsGINXRGcZU-SN8oxo5EiCynMTSxn0tXORfWBcOolkA-pFej9hGpdyBSYHQgsNUgCJvAg6P6QeifWxVwCKHG2ciBBiGJdsS0NqfDEij4L0DWsTaR6DBjeqpIIPP156bvIz5M0cjWTtpsPyB93sLmZ3PzdhGEdYsw6sHcXoh7lHUf_xo2a4KUrRpjp1R-XhH5SJxtGWOK2hNdWMiVkLSu7HcALg9Q1wEQX4L4-d1wwmB4YpAVm6tbrcqrrrhjjMqfYyP6LmEaE90z5BXs2M4kxNo9liUSUAB5KXNCF8CKwg845bzl5tfnItha_-EOtgcU07bHLVe21TU98fRHiqdmWbuO1FCd2M7rBsMy4cPntneVdFA9AM2P4DNFDWK5v4rHRzxOUlcaZw9Adt5wiyC2XBmWu2G95c1TTkRYHPYnDy3luHwO5GY5IlxjP9zhWmArUEpN9qAGGZpW29ULkZCq2dcswlqQnSLb1aWJHJqQ0SUP_OH-K_vdbFype2a-onvokbxYL5gggWTtq7R8ugevQdomSNnpQs9G46q71js_eTOVrKf-dUjZ3Moo20f_ge9HlyvBji8oRXosyAXClkmxn3fIHeWSqDVdO47WNVBxBmbjU8NRkUzs4SOVM8Gqd2y3qGeTqJ9zG6nxz34EXpWMaIonz7roiHYBRM1JOOad0FfBqP5CxZnw8LTnwmJ6WJ9TqWLBueQaqZRGL46LOSHtA8m6liuzMJtoy_UX8A_x_Xx6BrijWC5-XIJDxpUHRykYCbSwv7nghqjaYnN_RzjWNav8GCSa-Xt4beglRrjlCnJgY_Qg0KhqfhJvv5I7aKvkGbE9-EfSSz5HNxnTXbR_c_QvUzfGywT0Jpws9goGAdayPvwg4Xkfwv1q4OQy9xMtAd7jx27nTDx3y8zJxp5YfjV-toT2Lle2MlbbtX14XuRLUPE_2d05pp4jrAwgtgMLisFFf1EGgp3t3v9Ftd487sduEYHfYWGDpXs-6IP7OfH8nkRt_YsLDwvvT_jD7xoIXg30qtFadMF0zqbePt1a-hQvduGr1M-EdsDZ3hQ2MLIWR_jCpkb1rg1vhDM6MV38MlYIpVovYFg2st1JFUWJ4vPc4N5g0AB3lvGPoO0FrYRTUgyBZ-BdCe8mosle8NLQ-qs=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_07f3aed6a260a57f016b07447cd2c087d18c7c907525c408cc",
+              "format": "openai-responses-v1",
+              "index": 1
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_8f3L2OGYqByltT3ywaHe7pox",
+          "tool_call_id": "call_d2da310a9ebe4ec382bf4af61ee5cbaa",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         },
@@ -53,50 +60,58 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_XSLIxhEbPjwg52UPxePLjhYl",
+              "id": "call_6b2e888267104470a3ddc5bda602d6f8",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"},{\"as\":\"outstanding\",\"field\":\"outstandingCents\",\"fn\":\"sum\"},{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"invoiceDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"invoiceDate\",\"direction\":\"asc\"}]}}"
+                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"},{\"as\":\"allocated\",\"field\":\"allocatedCents\",\"fn\":\"sum\"},{\"as\":\"outstanding\",\"field\":\"outstandingCents\",\"fn\":\"sum\"},{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"invoiceDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"invoiceDate\",\"direction\":\"asc\"}]}}"
               }
             },
             {
-              "id": "call_LXmubSMlK5JDeMOMNmMhpbJ3",
+              "id": "call_fd8f3fe56bef4151bdd48825b9354245",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"},{\"as\":\"unallocated\",\"field\":\"unallocatedCents\",\"fn\":\"sum\"},{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"paymentDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}]}}"
+                "arguments": "{\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"},{\"as\":\"unallocated\",\"field\":\"unallocatedCents\",\"fn\":\"sum\"},{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"paymentDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"paymentDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}]}}"
               }
             },
             {
-              "id": "call_mQmkhFYqhtRwHI8D2G0xiiOM",
+              "id": "call_0e753a0177b345b793772c4eb1850c74",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"},{\"as\":\"outstanding\",\"field\":\"outstandingCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"invoiceDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"groupBy\":[{\"field\":\"currency\"}]}}"
+                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"},{\"as\":\"outstanding\",\"field\":\"outstandingCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"invoiceDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"groupBy\":[{\"field\":\"currency\"}]}}"
               }
             },
             {
-              "id": "call_RFpBROg5FSqKCWSaqmuLaXJw",
+              "id": "call_d6dfffe31a5d49b59563d988e68d1c8f",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"},{\"as\":\"unallocated\",\"field\":\"unallocatedCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"paymentDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"groupBy\":[{\"field\":\"currency\"}]}}"
+                "arguments": "{\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"},{\"as\":\"unallocated\",\"field\":\"unallocatedCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"paymentDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"paymentDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"groupBy\":[{\"field\":\"currency\"}]}}"
+              }
+            },
+            {
+              "id": "call_c47e6935c769431eaa499e34496889f6",
+              "type": "function",
+              "function": {
+                "name": "query-dataset",
+                "arguments": "{\"dataset\":\"invoices.allocations\",\"query\":{\"filters\":[{\"field\":\"paymentDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"paymentDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}],\"select\":[\"invoiceId\",\"invoiceNumber\",\"paymentId\",\"paymentReference\",\"paymentDate\",\"currency\",\"amountCents\"]}}"
               }
             }
           ],
-          "reasoning": "**Querying invoice data**\n\nI’m thinking about how to query data from May to October 2026, focusing on grouping by currency for each month and totals. I need to consider how to explain earlier invoice periods, possibly including full rows for allocation, invoice IDs, payments, and invoices. My plan is to start by grouping and totaling, then looking into unallocated amounts and any outstanding invoices. I want to ensure the data is clear and comprehensive!",
+          "reasoning": "**Looking into query details**\n\nI need to group the query by month and currency, including totals. It seems essential to explain the allocations related to timing, so I'll also consider querying row allocations across the entire period, along with invoice details for different periods and aggregate balances. Multi-parallel processing might help streamline this as well. It feels like there’s a lot to cover, but I'm ready to tackle it!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Querying invoice data**\n\nI’m thinking about how to query data from May to October 2026, focusing on grouping by currency for each month and totals. I need to consider how to explain earlier invoice periods, possibly including full rows for allocation, invoice IDs, payments, and invoices. My plan is to start by grouping and totaling, then looking into unallocated amounts and any outstanding invoices. I want to ensure the data is clear and comprehensive!",
+              "summary": "**Looking into query details**\n\nI need to group the query by month and currency, including totals. It seems essential to explain the allocations related to timing, so I'll also consider querying row allocations across the entire period, along with invoice details for different periods and aggregate balances. Multi-parallel processing might help streamline this as well. It feels like there’s a lot to cover, but I'm ready to tackle it!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YNmLekUBZUD3yt0no651aTTBFtpactkCKj-wIEUBYtS8ZlpPQKVt5LVlyunK8CwSy_GcaYF14Soq0wQJGZu5WZULLPEDUmYB9VIUCSDR4B412ElO6OfaEmkfjXuvo-wLR4YhgnLIaUCCgIsh8UpGvgKEVbSw9J1tDmFouye0MDeFJzZZvZHUhTm_ra0mjrpJx1U6KjxxL-ryFGQI2QsLwEFYjs-BB8bUR9zDb7u_eMFra280VBjQtDJf5pscFx13fATQj08IMWD45jNwOcF5zqryxr3v9Z5oPgb_zXcKMdO6Xjpvg1ResO4ftNENpDbyrEBqZxqX1pkZRKruPtpQsSiPqZMeV-U895JaZQmFBn6odZTSaS7FR8kWf3cRr-8afhHx-fIe6tGjmpkerjRnOdVQZQguR_LhyEbtFqHEoiwqNE3q61A0nk2YvU6xz8BxHHQXsbYh80bmTssMxkaxW5-qomKzGCMEBgKXoLTdxcVdcspAwDP26DLIIpYSwFEL7E9Q8xxm9F_HUDFo6skc4GAx4wPgfQOUy6jQWmpmj1MMjb7ctOpDJ86bAQlFrzrAywRqkxshzYDdiIo6gxAvwVbffqsrzRJSS-PUBKV4t7cTFsytIjDzGa8nDdDDd21YQYW8hnpeMth_kvfOtwmQgQVQoOPm6z0MeTO2gCiKFeyf9daZt_ofRp_RKVU7z1HAOnTsbBim39KviQbFf0gciZOA8bw_2348p6ca2-bIOMkwHqTxDjYKR42D9L3FE70LskxWSpP4Yw2_nRVpqNTU4tmB5OSjh3a8Ql2qpBAAsrmTBWKm_JrGDPZBC9CTOdrKuRjcEIJa44u53AXvznsgvBI-6hPklwy-Is3d9jKdPCDro_D6MFCbIhvdn9jZv2GaWoDZGevS5zejEctX99Cswk8XpHDrJNiHe4hj-XUYk3vhXWLnHNLEnxEEZ1gZcXWHRXRqyQjQ5olDa3XfeqvDuR1q9idVnv6ySt-fB4285rXnU9fzJjKGrrumPf56OqzwdXTTEtZwFGeqyBH2T739T5CTYtLHenLHn1Yqq_N17LJgJ3ip_ZTbdjKJPBwAHoTTGSBCuWXmCQbbDyqzDBOlrw1JGOBqrn-aXqwzyZYZIoW1nyrwp0Pn1lZTKxM5s0piLgZ5pplT4s7w6DjzsIMA90AfbKDJTiuumOb1yV5PZISKHRsYjXWN3BHsNPs6fQHMK6sp04OkXPeWSstTBjxaYMmxKpVAty0mnzsUZcz434UrQEA3U22Tzf9NHQiuqhUmTYlwViGh_W35FVHSN_fU3DKWkd3RwnryPtQ377iMyiyWH51m-TAGSsufXmKSj1gYL8uYj9hclnX0gq9ywH6BsYHzlOVkxjAJKz24Kp5ZzRiIP4NIBxs7t2pcz3mwbJgkL_cdrO16Pgmp-RxAizUIlUv_vKMUNZBY49psDZjRWueRsC8HIM2ZqUZRwuK36uCIQccWl9xJX70xeVfE6ZYFlkzCp4uwT1BblpzNwzmQhBcc4Trj1xD5vJ9Ffxrk3z9enyaJJxoE_he_yua5gm8FxY7KhGjC3c1qHGov5ZRAnt-NCVPEG5Yk98cDL67rreeO6iNmxWO-poJoyz9IKELST_vJ9HtYtlVXvFYafDxQfLRwdIfwhyY64bcyB7Ic9yyVuyIMcMbtjGdsmez5fj9-XAHGQuQZNxshCQP3IhtQraatycpUg0gTsq2cJVDcz4DTijQFypVb8YGlJrZrFx3yKZsRpIsaQlLme-hsBqH7zA0oCKSyP5OPVv97meUDBst6Pnv5bescPGbSdrAkfYsOVSDgS13CLQeXm9OAcoAbUcLMBpmGGuRebwPpMVrLn6sOHJbfnfEcSCLthErvxiSvUuMjUX0jXsyGB-ANzTPd2YcErm2DFzfPXYJU3IXIAEPcikYZ3U4reqcqeZ72awI8l391AUw_Ejji9oC5jWPTQg00mDbnkykPJ6l6WfNgd7XO6yFoWJy9BWFo_pqwv7XNSEd7MFPiz-Iz7u0xJNJcJw38TjarZnW-w5LUKaMYPFMegvXkQxi3rAIEZMnyr7DZsrkeCsSZl3rK89tfFdvoCWhi2l4jKyHToVJtrCBo99LbBYIfp36_58lEe7NL_s_xpzBqcLStMoss1HyqD12GOzAWNN4I-mDFXojW5gTktdJA9O9UI8vmPVANtogKjkdHHtfuuG-0cqFg0sVpmldSbqQ7yNML5rC4o_O_nvsHzU-ePX1Z4SfC0pBok7eOOP4MDzGM-Yjn_IhgFdPjTJ3_7PbQ24Fvkyu1ayRdS692K_oeW5o88Rp7Tbh2ElPNyR7AhVWEXV_h-I2LyyfLuj1ESALDoUA0CAhEcTk94Jyg7LtVal9Wlbw3A09X-16qZX1bTwz5kWj6mprvz0xWFnFmgAZ7A2UrwmSfimvsOVPPp-HXrrcE5vjw9H-cMs68GZ99cF84YyJ5K4wVxy17s7UC2TSG0FKhQDts9g4XwsI57ksVvwx.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0f261f8df9e035d4016af583611af887d19df8da8fb81d860d",
+              "data": "gAAAAABrB0SB0qt_dgkErjb0hoCnfKlOP0HwvxqZbZi-gtR5pe67yi_18VbnroDuybgjxw-4VpFR9XDZdPghpg7Vze4I0oUrXTH2hnB2fqFQus89kKKTTFZNFzzTD1U0N_1Hab3zoL7NOZ2q-vdJETs8v3cEtbfQIAZ76Mw95XSIyx00sUrhBTO4l9JM3X_NsptuM0712ZrnnJtGzXUhOp33km1CfevVHKCUVgVe925T4gX0TuzH5UUI5oFek2xaxVNzOT3Fjnr4RU7DbqYERgUeL7IWqAFIw_d_st72bU6xp5dqt6t7nwLFsYLS-GP-JKX0l8iBbaPiyuol2IBCarF-Rj8Xw2-N3c36BmdgbGw7KyP7NjmYRV55Sy2SQ3BdXtc3IZVdlC2Cr4L4iY5iytOhjDQgeahbAAWoUshy2pHh9yyLdihrmHcH5FYPZrAm0EcaYp7_qv5OwUTH55MPP5GITUes0ddr9rXvTn5tXV7ACFBRvzx5nuBcw0YIjlt-Re1uwg76AwROC1hNnmwveVX-Ccudc8gSsyKffxb5OJHi-WdpvBrQWXkQmmqtQIQ7Q9vs8Zki4wkzKd-xNAA8mmnPKeXU2iT1y8T6ezllArJKZFj76oxtBIXLLfuWSbxkOzbsYiboAE_ftAJlxFVpqdYDDn9O92GmVQ22Nj0Tw2ZEtEtTPOf6IyPuZLkAk-4_1EUszGBAX98lrucHfs8yfKwyQ2x19qSj0iOwgsp3UgTfelqrAJHU3kg1Zz9MkAeAgRfyDLlxlldI5yWi9wAjSBEc8whFZx674OrQ3fXwMswESLiOWOQGwQXM7lT9m54h0InIFyEGCmURCvYF68xVfvNqG-BtvB9jTO1vdTuGUE29qiC2d3XWqihlDZOvPyX8OklpAboTw0urx0NY2QnFDYkH26ZW7CrpAlhy-tT67UTtPwTD8fWgkG9Hjvo4gaIdn4KYwEFAajUfUW1Mfch1MiOTDM1IV1pjIBclMZifLCna3rfqajLFgzDuXWvA9hwX0P2kfQUY6eapELhJnNDCrutP9XPHrqSIb7KLACF2r8YMs36wO_eQXHgtuzufvWgLvGLocrEMZg0jqhDD80GFWOu6ngxgjvs9A-aIN1mA27yApZ_XrGbHIiTL_MfGVK8ZT0J4x52Wg1scqXPEOyEfvlD3KVp41jznfGLLQIjVs1VvN_tvMptdw5iso6zH--T54zeCNz1NkqvFxwsdJSazHv2cUP3BbtsR3mjF95MPWSlS6jNFI6QGzcHW33EiA7U2-gvLoJL-CNDfm9l44I7W0WRixqklhIKwuIaxoF6Obk7pnFdli0KXpFqTwzwOSimo9QuCQllN_ShUcx3kryYozMV7c84_OxYEarEb4ipsu6MScijrcTp0E5AGBZ827HnPAO8McdRldohEsmLQKzeaiUmP9PdCAOHScAH8c70v9kbts0UiUFZ3HAcP9zghQ5-Ij5xO58j7e2DS5JmBsMI_wIvFeNDdE1lCRqxF0dK6HkQE6tLqkeYAfAwJCYze7-_2JWondBAfPpkWE_dkbsVDOZ6TyJhDnz1jtIEF9PB5nivRRY822c5a3T3KKYXQLtZ4HuLQiCzJ0MWgFOjVpv-00JGUFIAyw2ioEWF6WLKcy2Xk24J4kjhdwwW69kwzVb69PNdly6Mp0rVQ90Hvl_a8z0G_uPcwTFOQvZrALx9VV-wY2q-Q78SRp4-ZTLahajIPtFJiqeO6ge5TiHC4qKz4vLjG0VfDbplvK_NbhrW-l4ox-I2NKApGYm4q_LbrWWRXdxhnO_4cW65YZquz222vc42rRysd2lx26lntklL1YrpJy1k95Voj2Ci33xE63W9hsi-Cn86_-cwbjFvBoBHP_j3XeoTuFTOmkvH9DGW3YVnh4ngFVWKzY7wFXojmH2ZFn_FPNiCAGsqAM0btq1umE5dtOv4wMOowhduAPOPHvbVZh36fogO70r6yWIaw-kqDbOqswWtZx3yCGOWBlft8LEsQPGn4nvF902QR04W2LvPRRg3DBauR8wZCihIoX46FYeMYkNA09XgC83LUsTWJULfae8afi_BjVWEn6yM0JytuqxZsLApVK1SxoW_xVqAHaOv87d_8OnBazUhKsF9RxGnjhv4XiCpaACIMWHxMHCBFu1vOZm7cfYG8kVIjJ-5o9_5foO1FG_t_JRFYTv1lBaeDDqPQpmvgVfayZySGhh0iTimABvLCqnX1SCEs33--HffOjejLREdFDnsefV94nfXCVZwNDfhOkO9tXvo5l8N-xpAZYLyqCn7b5daODuHP67qWlg807eUpILvgPkBXuL3n3ZGp7SfSRg==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_07f3aed6a260a57f016b07447fbfbc87d1a9da040935125d3c",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -104,26 +119,32 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_XSLIxhEbPjwg52UPxePLjhYl",
-          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"invoiceDate\",\"type\":\"date\",\"bucket\":\"month\"},{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"invoiced\",\"type\":\"money\"},{\"name\":\"outstanding\",\"type\":\"money\"},{\"name\":\"count\",\"type\":\"number\"}],\"rows\":[{\"invoiceDate\":\"2026-05-01\",\"currency\":\"SGD\",\"invoiced\":3490000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-06-01\",\"currency\":\"SGD\",\"invoiced\":3670000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-07-01\",\"currency\":\"SGD\",\"invoiced\":3850000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-08-01\",\"currency\":\"SGD\",\"invoiced\":4030000,\"outstanding\":405000,\"count\":6},{\"invoiceDate\":\"2026-09-01\",\"currency\":\"SGD\",\"invoiced\":4210000,\"outstanding\":940000,\"count\":6},{\"invoiceDate\":\"2026-10-01\",\"currency\":\"SGD\",\"invoiced\":4390000,\"outstanding\":2775000,\"count\":6}],\"truncated\":false}",
+          "tool_call_id": "call_6b2e888267104470a3ddc5bda602d6f8",
+          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"invoiceDate\",\"type\":\"date\",\"bucket\":\"month\"},{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"invoiced\",\"type\":\"money\"},{\"name\":\"allocated\",\"type\":\"money\"},{\"name\":\"outstanding\",\"type\":\"money\"},{\"name\":\"count\",\"type\":\"number\"}],\"rows\":[{\"invoiceDate\":\"2026-05-01\",\"currency\":\"SGD\",\"invoiced\":3490000,\"allocated\":3490000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-06-01\",\"currency\":\"SGD\",\"invoiced\":3670000,\"allocated\":3670000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-07-01\",\"currency\":\"SGD\",\"invoiced\":3850000,\"allocated\":3850000,\"outstanding\":0,\"count\":6},{\"invoiceDate\":\"2026-08-01\",\"currency\":\"SGD\",\"invoiced\":4030000,\"allocated\":3625000,\"outstanding\":405000,\"count\":6},{\"invoiceDate\":\"2026-09-01\",\"currency\":\"SGD\",\"invoiced\":4210000,\"allocated\":3270000,\"outstanding\":940000,\"count\":6},{\"invoiceDate\":\"2026-10-01\",\"currency\":\"SGD\",\"invoiced\":4390000,\"allocated\":1615000,\"outstanding\":2775000,\"count\":6}],\"truncated\":false}",
           "name": "query-dataset"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_LXmubSMlK5JDeMOMNmMhpbJ3",
+          "tool_call_id": "call_fd8f3fe56bef4151bdd48825b9354245",
           "content": "{\"dataset\":\"invoices.payments\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"paymentDate\",\"type\":\"date\",\"bucket\":\"month\"},{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"collected\",\"type\":\"money\"},{\"name\":\"unallocated\",\"type\":\"money\"},{\"name\":\"count\",\"type\":\"number\"}],\"rows\":[{\"paymentDate\":\"2026-05-01\",\"currency\":\"SGD\",\"collected\":3130000,\"unallocated\":0,\"count\":5},{\"paymentDate\":\"2026-06-01\",\"currency\":\"SGD\",\"collected\":3655000,\"unallocated\":0,\"count\":6},{\"paymentDate\":\"2026-07-01\",\"currency\":\"SGD\",\"collected\":3835000,\"unallocated\":0,\"count\":6},{\"paymentDate\":\"2026-08-01\",\"currency\":\"SGD\",\"collected\":4015000,\"unallocated\":0,\"count\":6},{\"paymentDate\":\"2026-09-01\",\"currency\":\"SGD\",\"collected\":3070000,\"unallocated\":0,\"count\":4},{\"paymentDate\":\"2026-10-01\",\"currency\":\"SGD\",\"collected\":1815000,\"unallocated\":0,\"count\":3}],\"truncated\":false}",
           "name": "query-dataset"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_mQmkhFYqhtRwHI8D2G0xiiOM",
+          "tool_call_id": "call_0e753a0177b345b793772c4eb1850c74",
           "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"invoiced\",\"type\":\"money\"},{\"name\":\"outstanding\",\"type\":\"money\"}],\"rows\":[{\"currency\":\"SGD\",\"invoiced\":23640000,\"outstanding\":4120000}],\"truncated\":false}",
           "name": "query-dataset"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_RFpBROg5FSqKCWSaqmuLaXJw",
+          "tool_call_id": "call_d6dfffe31a5d49b59563d988e68d1c8f",
           "content": "{\"dataset\":\"invoices.payments\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"collected\",\"type\":\"money\"},{\"name\":\"unallocated\",\"type\":\"money\"}],\"rows\":[{\"currency\":\"SGD\",\"collected\":19520000,\"unallocated\":0}],\"truncated\":false}",
+          "name": "query-dataset"
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "call_c47e6935c769431eaa499e34496889f6",
+          "content": "{\"dataset\":\"invoices.allocations\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"invoiceId\",\"type\":\"text\"},{\"name\":\"invoiceNumber\",\"type\":\"text\"},{\"name\":\"paymentId\",\"type\":\"text\"},{\"name\":\"paymentReference\",\"type\":\"text\"},{\"name\":\"paymentDate\",\"type\":\"date\"},{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"amountCents\",\"type\":\"money\"}],\"rows\":[{\"invoiceId\":\"a78b0f9b-1858-4004-894e-d3044ea138ba\",\"invoiceNumber\":\"INV-2026-05-02\",\"paymentId\":\"7c4e0f2c-6325-4bb6-86f3-86b930ae695e\",\"paymentReference\":\"TXN-PAY-2026-002\",\"paymentDate\":\"2026-05-13\",\"currency\":\"SGD\",\"amountCents\":820000},{\"invoiceId\":\"e289236b-80b6-4c3b-8ef6-a26f7400758a\",\"invoiceNumber\":\"INV-2026-05-05\",\"paymentId\":\"cd3318db-25ed-4a7c-809d-539f47bc50e9\",\"paymentReference\":\"TXN-PAY-2026-005\",\"paymentDate\":\"2026-05-17\",\"currency\":\"SGD\",\"amountCents\":420000},{\"invoiceId\":\"6bdb5bf1-0b6b-4cfe-8920-6ad7f8834da5\",\"invoiceNumber\":\"INV-2026-05-06\",\"paymentId\":\"61071167-ab64-4b16-867e-3a15a04a8937\",\"paymentReference\":\"TXN-PAY-2026-006\",\"paymentDate\":\"2026-05-20\",\"currency\":\"SGD\",\"amountCents\":750000},{\"invoiceId\":\"a0774a4a-a630-41ba-8364-bcb715ff0c6a\",\"invoiceNumber\":\"INV-2026-05-01\",\"paymentId\":\"e99513c5-15c1-400e-8638-d3a232125110\",\"paymentReference\":\"TXN-PAY-2026-001\",\"paymentDate\":\"2026-05-22\",\"currency\":\"SGD\",\"amountCents\":500000},{\"invoiceId\":\"7410921a-e71a-4fc7-8719-9f9fd86a12ed\",\"invoiceNumber\":\"INV-2026-05-03\",\"paymentId\":\"f7c7d927-03a7-4ea9-8656-754e42b257cf\",\"paymentReference\":\"TXN-PAY-2026-003\",\"paymentDate\":\"2026-05-22\",\"currency\":\"SGD\",\"amountCents\":640000},{\"invoiceId\":\"23cff86f-2541-484e-8223-55f4c4fc200f\",\"invoiceNumber\":\"INV-2026-05-04\",\"paymentId\":\"5134d8f4-0709-4e29-8846-906e1672f0c9\",\"paymentReference\":\"TXN-PAY-2026-004\",\"paymentDate\":\"2026-06-07\",\"currency\":\"SGD\",\"amountCents\":360000},{\"invoiceId\":\"168c8566-dd77-49fe-83a1-4e8dffb35f85\",\"invoiceNumber\":\"INV-2026-06-02\",\"paymentId\":\"9d4dc073-169d-4cfb-8955-085a5be4696e\",\"paymentReference\":\"TXN-PAY-2026-008\",\"paymentDate\":\"2026-06-13\",\"currency\":\"SGD\",\"amountCents\":870000},{\"invoiceId\":\"cad800ee-d942-44e6-8e62-8d028754bcb0\",\"invoiceNumber\":\"INV-2026-06-05\",\"paymentId\":\"bb7414da-1a23-47ea-8213-48743cd9f0d2\",\"paymentReference\":\"TXN-PAY-2026-011\",\"paymentDate\":\"2026-06-17\",\"currency\":\"SGD\",\"amountCents\":445000},{\"invoiceId\":\"f1426d31-5ceb-4348-8e99-93703cce23f8\",\"invoiceNumber\":\"INV-2026-06-03\",\"paymentId\":\"c8064da3-906f-494f-8d22-357dc2133dcd\",\"paymentReference\":\"TXN-PAY-2026-009\",\"paymentDate\":\"2026-06-23\",\"currency\":\"SGD\",\"amountCents\":660000},{\"invoiceId\":\"9791b8ef-4565-4e9b-80b2-1e1080b6ecba\",\"invoiceNumber\":\"INV-2026-06-06\",\"paymentId\":\"c7b390be-f78d-40d3-8549-d40a95fa804b\",\"paymentReference\":\"TXN-PAY-2026-012\",\"paymentDate\":\"2026-06-24\",\"currency\":\"SGD\",\"amountCents\":790000},{\"invoiceId\":\"a562050b-c5eb-436c-8ad3-4babb355ab2d\",\"invoiceNumber\":\"INV-2026-06-01\",\"paymentId\":\"6ae840c6-82a4-40e0-8434-1960ae9ff6f3\",\"paymentReference\":\"TXN-PAY-2026-007\",\"paymentDate\":\"2026-06-25\",\"currency\":\"SGD\",\"amountCents\":530000},{\"invoiceId\":\"88c5668f-e392-4d9b-83b4-98ced569321f\",\"invoiceNumber\":\"INV-2026-06-04\",\"paymentId\":\"de3ae3d1-55a3-44ac-8f9a-00f2fced3976\",\"paymentReference\":\"TXN-PAY-2026-010\",\"paymentDate\":\"2026-07-08\",\"currency\":\"SGD\",\"amountCents\":375000},{\"invoiceId\":\"5644bc06-7b44-482b-8d4b-3fc8b0a4d0f4\",\"invoiceNumber\":\"INV-2026-07-02\",\"paymentId\":\"0f074d18-01e8-43fa-88ea-cab125d1da18\",\"paymentReference\":\"TXN-PAY-2026-014\",\"paymentDate\":\"2026-07-13\",\"currency\":\"SGD\",\"amountCents\":920000},{\"invoiceId\":\"e9b1c065-5602-49e5-8137-94388af5f560\",\"invoiceNumber\":\"INV-2026-07-01\",\"paymentId\":\"346c83e5-ad21-4085-8590-bc0da3a4f529\",\"paymentReference\":\"TXN-PAY-2026-013\",\"paymentDate\":\"2026-07-15\",\"currency\":\"SGD\",\"amountCents\":560000},{\"invoiceId\":\"41e37fc3-615c-4432-8920-1b9ed2665512\",\"invoiceNumber\":\"INV-2026-07-05\",\"paymentId\":\"71641d72-d462-48dc-8dcb-6871aec7d294\",\"paymentReference\":\"TXN-PAY-2026-017\",\"paymentDate\":\"2026-07-17\",\"currency\":\"SGD\",\"amountCents\":470000},{\"invoiceId\":\"d6899470-cc06-4f75-856b-13b814776932\",\"invoiceNumber\":\"INV-2026-07-06\",\"paymentId\":\"5d94faa9-180d-4c23-8750-4e44259b31ac\",\"paymentReference\":\"TXN-PAY-2026-018\",\"paymentDate\":\"2026-07-20\",\"currency\":\"SGD\",\"amountCents\":830000},{\"invoiceId\":\"ae043e66-a71c-4ab2-877b-b39d9fb72105\",\"invoiceNumber\":\"INV-2026-07-03\",\"paymentId\":\"767380e2-89d4-41c6-85c7-bf9e3f1c63bf\",\"paymentReference\":\"TXN-PAY-2026-015\",\"paymentDate\":\"2026-07-24\",\"currency\":\"SGD\",\"amountCents\":680000},{\"invoiceId\":\"ded80f8c-93d7-4fe3-80d9-467dac4a1b17\",\"invoiceNumber\":\"INV-2026-07-04\",\"paymentId\":\"94a69c6f-9afc-4a1e-81e8-858c389be8c8\",\"paymentReference\":\"TXN-PAY-2026-016\",\"paymentDate\":\"2026-08-07\",\"currency\":\"SGD\",\"amountCents\":390000},{\"invoiceId\":\"f1d3d78a-3e8f-4906-82ac-c139078a78e2\",\"invoiceNumber\":\"INV-2026-08-02\",\"paymentId\":\"a1cbf667-9720-4fe0-8c52-33fd5dbdd575\",\"paymentReference\":\"TXN-PAY-2026-020\",\"paymentDate\":\"2026-08-13\",\"currency\":\"SGD\",\"amountCents\":970000},{\"invoiceId\":\"ada70373-cdf5-4c2d-8e43-48f3b7cd59bb\",\"invoiceNumber\":\"INV-2026-08-05\",\"paymentId\":\"bced80ac-8386-4964-822a-5b87c0bc5a35\",\"paymentReference\":\"TXN-PAY-2026-022\",\"paymentDate\":\"2026-08-17\",\"currency\":\"SGD\",\"amountCents\":495000},{\"invoiceId\":\"61115423-5545-416a-8e9d-4ef44c2156cc\",\"invoiceNumber\":\"INV-2026-08-06\",\"paymentId\":\"f619ab52-8029-4ca7-88d1-9a7ead75a9c8\",\"paymentReference\":\"TXN-PAY-2026-023\",\"paymentDate\":\"2026-08-24\",\"currency\":\"SGD\",\"amountCents\":870000},{\"invoiceId\":\"22b7ade6-b124-4d93-8c3a-1e6e7c3de694\",\"invoiceNumber\":\"INV-2026-08-03\",\"paymentId\":\"6bc8241f-64d0-4e9a-828b-b5fecff1ae9c\",\"paymentReference\":\"TXN-PAY-2026-021\",\"paymentDate\":\"2026-08-25\",\"currency\":\"SGD\",\"amountCents\":700000},{\"invoiceId\":\"fbf00e88-64ff-40e0-87f4-28271424d8f4\",\"invoiceNumber\":\"INV-2026-08-01\",\"paymentId\":\"eb9b2bb7-33f2-4b67-88a5-39568497ae2d\",\"paymentReference\":\"TXN-PAY-2026-019\",\"paymentDate\":\"2026-08-27\",\"currency\":\"SGD\",\"amountCents\":590000},{\"invoiceId\":\"7815df58-1840-44b4-8d69-f5bf256587df\",\"invoiceNumber\":\"INV-2026-09-02\",\"paymentId\":\"718e4d10-0710-4be7-8402-5606ca79f501\",\"paymentReference\":\"TXN-PAY-2026-025\",\"paymentDate\":\"2026-09-13\",\"currency\":\"SGD\",\"amountCents\":1020000},{\"invoiceId\":\"c766195d-7395-42bb-8739-3783409beaa5\",\"invoiceNumber\":\"INV-2026-09-05\",\"paymentId\":\"6afd8703-da77-4f18-861b-25293a455b4c\",\"paymentReference\":\"TXN-PAY-2026-027\",\"paymentDate\":\"2026-09-17\",\"currency\":\"SGD\",\"amountCents\":520000},{\"invoiceId\":\"afdd6a22-daf6-4371-8061-58d46cf7b1c6\",\"invoiceNumber\":\"INV-2026-09-06\",\"paymentId\":\"b33160b8-a659-4c12-8f3a-865047f2c13c\",\"paymentReference\":\"TXN-PAY-2026-028\",\"paymentDate\":\"2026-09-20\",\"currency\":\"SGD\",\"amountCents\":910000},{\"invoiceId\":\"9ff80baf-0e9f-4f57-8173-92bc97b05a9e\",\"invoiceNumber\":\"INV-2026-09-01\",\"paymentId\":\"35f73854-2588-42b3-8acf-72af3b6c449d\",\"paymentReference\":\"TXN-PAY-2026-024\",\"paymentDate\":\"2026-09-23\",\"currency\":\"SGD\",\"amountCents\":620000},{\"invoiceId\":\"74eb9200-c209-4368-8085-9081540617a8\",\"invoiceNumber\":\"INV-2026-09-03\",\"paymentId\":\"3b7edfc6-fc5d-4eed-8bae-49d363214c1f\",\"paymentReference\":\"TXN-PAY-2026-026\",\"paymentDate\":\"2026-10-10\",\"currency\":\"SGD\",\"amountCents\":200000},{\"invoiceId\":\"4c6779d1-d1cd-4b17-8718-e706bbee1892\",\"invoiceNumber\":\"INV-2026-10-02\",\"paymentId\":\"c83d6d7d-795f-4918-86d0-51782a599a45\",\"paymentReference\":\"TXN-PAY-2026-029\",\"paymentDate\":\"2026-10-13\",\"currency\":\"SGD\",\"amountCents\":1070000},{\"invoiceId\":\"ca4163e2-142a-4f9e-8f97-6c091f4ba04a\",\"invoiceNumber\":\"INV-2026-10-05\",\"paymentId\":\"b7539c3f-b60e-4881-83bc-859a8e1b0e01\",\"paymentReference\":\"TXN-PAY-2026-030\",\"paymentDate\":\"2026-10-16\",\"currency\":\"SGD\",\"amountCents\":545000}],\"truncated\":false}",
           "name": "query-dataset"
         },
         {
@@ -131,58 +152,42 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_zclzqS3WvyT5A50yfRsWtD5w",
-              "type": "function",
-              "function": {
-                "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"invoiceDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"invoiceDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"invoiceDate\",\"dueDate\",\"totalCents\",\"allocatedCents\",\"settledOn\",\"currency\"]}}"
-              }
-            },
-            {
-              "id": "call_Oo9ebl9oTu0MckwzVRwRgtaI",
-              "type": "function",
-              "function": {
-                "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.allocations\",\"query\":{\"filters\":[{\"field\":\"paymentDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}],\"select\":[\"invoiceId\",\"invoiceNumber\",\"paymentReference\",\"paymentDate\",\"amountCents\",\"currency\"]}}"
-              }
-            },
-            {
-              "id": "call_89PxzhWK3rVXSQqX972IZEB5",
+              "id": "call_d0dce35a991747e8a8273be72abdc74b",
               "type": "function",
               "function": {
                 "name": "make-artifact",
-                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"invoiceDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"},{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"invoiced\"},{\"dataset\":\"invoices.payments\",\"name\":\"Collected\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"paymentDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"},{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"}]},\"x\":\"paymentDate\",\"y\":\"collected\"}],\"title\":\"Monthly invoiced and collected (SGD)\",\"type\":\"bar\"}}"
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced\",\"query\":{\"aggregates\":[{\"as\":\"invoiced\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"invoiceDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"},{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"invoiced\"},{\"dataset\":\"invoices.payments\",\"name\":\"Collected\",\"query\":{\"aggregates\":[{\"as\":\"collected\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"paymentDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"paymentDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"},{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"}]},\"x\":\"paymentDate\",\"y\":\"collected\"}],\"title\":\"Monthly invoiced sales and collections (SGD)\",\"type\":\"bar\"}}"
               }
             },
             {
-              "id": "call_DoUW3CMzAT2FUbJK3LmjLpw1",
+              "id": "call_3d1050f0f104438c99c5c679f533e301",
               "type": "function",
               "function": {
                 "name": "make-artifact",
-                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoices\",\"query\":{\"filters\":[{\"field\":\"invoiceDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"invoiceDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"invoiceDate\",\"dueDate\",\"totalCents\",\"allocatedCents\",\"settledOn\",\"currency\"]}}],\"title\":\"Invoices from May to October 2026\",\"type\":\"table\"}}"
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoices\",\"query\":{\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"invoiceDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"invoiceDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"invoiceDate\",\"dueDate\",\"totalCents\",\"allocatedCents\",\"settledOn\",\"currency\"]}}],\"title\":\"Invoices from May to October\",\"type\":\"table\"}}"
               }
             },
             {
-              "id": "call_P9ojQmfAvWhTXj1F0BxbXKN3",
+              "id": "call_cce36cb1ef2d42fb9f70b887134213b1",
               "type": "function",
               "function": {
                 "name": "make-artifact",
-                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Payments\",\"query\":{\"filters\":[{\"field\":\"paymentDate\",\"from\":\"2026-05-01\",\"op\":\"between\",\"to\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"reference\",\"customerName\",\"paymentDate\",\"amountCents\",\"allocatedCents\",\"unallocatedCents\",\"currency\"]}}],\"title\":\"Payments from May to October 2026\",\"type\":\"table\"}}"
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Payments\",\"query\":{\"filters\":[{\"field\":\"paymentDate\",\"op\":\"gte\",\"value\":\"2026-05-01\"},{\"field\":\"paymentDate\",\"op\":\"lte\",\"value\":\"2026-10-27\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"reference\",\"customerName\",\"paymentDate\",\"amountCents\",\"allocatedCents\",\"unallocatedCents\",\"currency\"]}}],\"title\":\"Payments from May to October\",\"type\":\"table\"}}"
               }
             }
           ],
-          "reasoning": "**Creating data visualizations**\n\nI need to prepare a chart with two series for each month, filtering out currency groups to focus on SGD. Alongside that, I should include two tables with the underlying records. It's important to correctly ground the timing in my data, so I’ll need to craft queries for the allocations and the invoice list to validate everything. I think I have 36 rows and need to pay attention to the allocation dates.",
+          "reasoning": "**Creating financial summary**\n\nI need to prepare a chart for monthly dual series, focusing on one group and one aggregate, while filtering out currency in SGD. I have two record tables for invoices and payments, and I’ll select key summary data. \n\nThe May invoice was paid in June, with a partial payment in September and recent unpaid totals. The totals show SGD 236,400.00 invoiced and 195,200.00 collected, leaving 41,200 outstanding. I'll avoid additional figures except for the totals and ensure necessary chart and tables from exact queries.",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Creating data visualizations**\n\nI need to prepare a chart with two series for each month, filtering out currency groups to focus on SGD. Alongside that, I should include two tables with the underlying records. It's important to correctly ground the timing in my data, so I’ll need to craft queries for the allocations and the invoice list to validate everything. I think I have 36 rows and need to pay attention to the allocation dates.",
+              "summary": "**Creating financial summary**\n\nI need to prepare a chart for monthly dual series, focusing on one group and one aggregate, while filtering out currency in SGD. I have two record tables for invoices and payments, and I’ll select key summary data. \n\nThe May invoice was paid in June, with a partial payment in September and recent unpaid totals. The totals show SGD 236,400.00 invoiced and 195,200.00 collected, leaving 41,200 outstanding. I'll avoid additional figures except for the totals and ensure necessary chart and tables from exact queries.",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YNxeLfFAQTwx2RqMQ7Kg6sGJTznnU33veZq8swhUyoNTYJe-lBskLLUXERX22ILbt610EucFq6rcAeauJyJWH0kONqYlJgUHnc_qXwPiDvjxS2Seq2ZTTaXLpPxebC8IbDyb2prqRzgqMVLTTDemgw17f8klLZmXSD_vZXfpt7eaSErd4ybHRbImLGNYXh2JmcWJp3o77NTa9G6BFnYm6G7BSO3tukIEnhMqMpsq-jiV7pgDUPE9QihJsAxky4B_CQW3C0EYhttx4fg6e360NX08oddjGUNWHAujz6mOXRuAjQb91AI5SBVVOUievNnjjwnZhXSSlX-IBa6Be_CV_Xz2qppFBKFF2fism5Rx7Mtp3v0e5nobzUu5W2GG59vyrEnDRRpCAuFC4Jt8CWsFl-vBQ7k1d2myfA5VzFRmnd3DlVgQRFQfMrFyHmHVXeXsBD1fq5j3cjJOphaz-P46B1zh78vU2SH8dpa1R9-Ujdl0tgZlcTIvJ-XwaRkqICKX-KtESE8UWuG01tWxVDv_aPF9g2G9YoqUzVw4mm-CReS2-VQFfAwqP-wzDV6507hIGLGeBAmg3JNh2SOUjDIwfTz_msQb2M41XekI3ZYhH_qBGlNOq-4Nt8C5QvQku0PPE8z2iuMwuidftYhGvRpwqz0DH3oqJPTakDGcWbfI4gElnyniOqIkJNjNlAsXQF9QqBnJ1JkAPpFLL8QRvkDuk5yPrJ7Xyy3XwOFj6k6OrQk5PETbC6u_10SqZW5GpFn0hap-0bdhY2aYAPaNjyqJxvQ1lhp2XJf3K4tLXgij88hhEPUXkox0y8VBDhIkhq1p2CyO-Agd_ee9MT42ZPG2MJ7VB9w27WedCUj0gqC2t3-UbAaQYqb1km6Ho3VyiKOQTUzKpHaMq0JIcxIWP8w2eVmEWJBu8B2sCHtdP9iMQ680F8M0Aow2YMypABs7USn3TY6goPkA0D7eHIJgM0KpWDkYTUCDc6x2czCrQcGeooWdGOovrwmNJoNhFcyi91vQdwxQ_nxeXY4_merfEP8oyrSuWEsHCGro_4Um_s2G_cy3hsmr82i4KTHbeZ7W64zsRJfeM2NFjiV0hAOrVIvac0T76X-LDlAODwrUk0OLh1pDee_LDtbye4ipT3S2DIQTQRaepuyChTEg45o7UIPRItuQJm-jGDaBFMDhh8kY2luo0KePKPuZTlrEhv67F-3AcHdnaF2kpJVkyed_YXjGFj6rnpmlT8CrnAj7jxUCSaW1KCYYaEqj7jvBLr6FPCg_PD9lH79YITEmv2otnkvt0MLPmM-qL_qMFfbvO8W5uxrOzKWj9la5Q1tQwt6aoZf74IHiwxYqUdHxsaYUJ2F4M5n3PXIvnL4El_xI8XCRYyZDDOQhTwH8eqWijt00WolT_MtfNVnZjJW_I7PH9y-V1XnkAH17zAp7yLer0PaEqtABa2Phy_yRpQJevWozl96E0HcfzAzPVLhmiN5XUiIqEKbB59yeVD6fb8R0lecXQ9DurHzmfJ_jrgGEKtP48oAFxjbeSbaF-EVN61gYHHGDfF20xAtr9leulc8yQNmqscSGYwNXr-mYSM2BS8do-lm9XaSUTJ9MmGgT_H1rpz8ExauGb0RmnJ0AeskK_0kYedhR0V4RSioEfMU-dPfHoDSFe3MLEd7RjyBxG-H1KmzquqZXjOMP_lEKUkyIs_fP0mh6TOqgluZVwAiu5yrXMfJUbq9tuuIJLnNmUJiaiXU-yXMzRBQyiPfQ0SlFI4z-8qEH4XxivBSwZS53bnXQ6eKYDfXo1OVv5bvDk-HLr2j6criigN3XnvMF6HsRuTJ_ZY32wJk5MyMNyzDhGt_5cIBjiVcCCCULZS5dxKahxG42UtuDOvNS_bahrKEYUiVvI7ILHcmVZfFbvkm2HlX6iXUrGftfamBn4tVM0h7JTi7pP0xpsbChPHpdtYqxsBy5-2Nt9yQ4S5vEifz0Jcwm-3gPA3-C3uUsNesgYUGllwWtUddInxHBVvQ6Qf9VGsuJcSXjLi1dXGOR18hBCn4FyXWuYhalbhY509zqJ4PxY0s3BunXrdukl3qSAgo1ImfdZlUl17P99XlCJHhxHX58pAZa3z-ckPHgWnWKfMcG_E5YNu8CNDvlbJ82dRqsOe5Q739ycoxwW0PtZ9aeDn8j1aIgYCmoCalPfu6k7X__Uq5VvmyUGi5iM_yOZwOIVAIzMw5cbuk2YCUNRTL4lyBG72w9clRfDOYGH8qwJ5o7uN34vrwVckw8bI6SH-HwWB6uPCG-lhhcgqFJID19LtpU0FB_PLDN9P0MJBzjWJOEXDrcU0AXlvftHJwJ9fvTdepg1qhpXhUN2KpEU4SrEI2eytjgPh83KzjweniBeCL3tKLqtHkBQ==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0f261f8df9e035d4016af58368d73c87d18ba4f3e9be44c6ed",
+              "data": "gAAAAABrB0SNmH_lNp_RB9peJWLlol1-BDtuRrF6XFAl_Gy77LwNMdz-nzbOF6rETL3FqoEKU0puCbysIMfF4rt7FYFi72ZDJzafElqpCrhvcYzjl0Lg_-1bQw3ei3kY2D_mDZSlBwnnVoTIo9MdF7OkLRSOzh9X_bkREBGj42v47LFZ3XV28Tckv-uK2rXCpK8wIWqc2zzW3FklQlFjTSfOaOBfP7r_UFGob62Pq9DJnZ2pZrkjo6xOeZY8pzHV7jjeffNa8SCG7DyrxjPCYTtjSMoT3tD63mw6CEdrKZS1UgkmU6FZws3HElIuPChVzCdcjBwOg9OrqiFw1DJX5_bfyMr48XBB5fI58B8VSk0IAKvT3aORfiEXj4oF2WEvj_I-H-8G_kYWwmPvz6neCEJRlBnKCo2Sbow_4rFcI4RtcMdbDoJrfciRQuOlroaXregRF0fOUAfhNPRTdWxHXESZAqecFXhfHxkXIMlYwnN0RjiO7seoEb4pZ7zWXuU6U1MJvlHIC9hJib_cTaBeWuTVyFXIHtnErpfdItu1LbtS8nPLq4H6VAtqB89fxvdiCAviiSnlmedodXG7va1MNNGoG6VJyqUGUpVF9u9XFARbPxpNnEeuf9qHVV5ey5yUaEJQe3SJu4pTnP4WfH_GcJ-V5f6KmVJmpFNGDX3xtVR5WoO6NarKfk2h-X6Op2-s32ryVis69T1bP0ut1btLhGlVDuDBZjvoJgiMB8f28KAoyd_JfNHNWekkj44dRmJN8RuI0HKi-YFdLNoE-R40uR0JohF2hrpa5KgduQ0LZ3pSUTH_v3urQeple4q3MZbd1xqf5qBiQab2MToaSXwgtb7kYpgkYKMYTjPZNkcMPJLIKEyzSKeckyvGTK91mZckWvDTf29pRVddu8YV7BHKvTsjnn7HdSgqo0GzrqWaMOgg279QhOuzSJriwPOfKWAaV0HeEufF_btaaEsiKA07nAPQLAGZZ9hYnDOo6z41RJzo7fiMS_ung2c0BgHj_ea4glPG_dqWYZFO0-p5dK5I-u6eC2i85R9vxkbwujFvvfJddrFFWTDItvFpOxkOJKduP4pxxd9U89p4rQF0JqVQUfrzSKIXspOI-jXBvU4580j-Cnt64vyNGyAuLmTo2JelG0-AhrG4KTIS2VYYSkRSM-9avl87BgC3PNgCRgZpd54TNzdZTjVKIKUuTAUoY8Bqh6pJ60FSiOtYkvnE6bkPP0W5GdOgf3VwE3yqOy38Ftu3YP0hzg-W-FO6kS31DjTqvuyxJEYh128235YS8Z9tKuaKiA0iU8imMaVgWgySmqX833hocH35tHxO9csxTl49dd8Wbs60tNXfSac5xjvLjdj3CHWWX-WuprJ-Xxn8_6uy6AAGjLzLHJidCFquUSdr1epVLBWeeAgbLOqHx5nfB29IZFmpYn6Tk7YATxCboyAT8hv1FqN8dLoKtPavJE4hrTULX2CHtT3lBe1xstqI0sxmqInS7gpPiOd3gvFWJXQO5w3t6SY3wqUQTg7ULUHtPYweq8FHIXhhdmgBsvsB1p6tXfAgog19JdVhzzr3xg0BXNFyDNVyJKee6MQwJO1IKQqEbpCzCEJOgmUAQUpx-gQJKyA4B7tDiY6yk8OTLOccOIJMOZKJQEVxPkKhRN8lWsolylJrW35QkyPt6AhDevACxEhzpCf1QnlU5NpDyXALyuccNNeMPFbwlmDw--nka9oO0lUuC3ehzUc1JDDFz7CeAuRqwmvd7Kmx-_cuu2Oc0whKjDSkmJieKEn-6WOb9Ms6Jq8uVyNeO0TPKOO7Hyqnqm5GMOCLfWe5xs5m3FSFdMufy1fgPMxvVoLKXeFxL9dKLgSIWOIv8SjS_TL8wx8XC-sZYNIYuXYDL4v5CfF7yPPscNUapjrtWJyS0tlB8MIOgjHHgajqlIj8D6Byq4LUwOvItVhIibKz9ITmas70tpk7fSk3teGgfJfFaSq213JiepWa2r1Dqg6C9i7wgXEcWQMV8vnnFma4TJcPz30WlRAix8aiW8qecJyjzP3Afrf0LHi87zcm7bd57If3T6JHn_n6vw6ew09CrClQ-rznTwGPvJPdCUN2yqRdXqWuGOGBKrIuf8h4SJcco11OG_HDXIksbwhviN__97SdAyGs9Ed-6Rj_-UjKJYkGJbDlV89vHRf-ENpvT4VraVUcB4eEFWRcaWbQ3xFkourbRqwUvmbueHtlV63vvTxlOI4noT0FaxBNMMXc0nyvvjBc6eLB2QYxKASqKnaQJG6qJM7h_xs3tepvEfvei8n9FDstew3PTbrFkOGyLct6yz0fYVO-pKeHAUZyo3txH4mwLP85-gl2MsLGe9C30NF0D0-PetwWG3cdxjtTXNV2HuC3AnpL4PMx-_AR93l0MLii_pnHYp9vBMvGQjTmVP4RBFmIXRvfQ7nn1FP8qE8kwdBmFTkXpjmdsWB9UAvazMG6rIulVll0iJ52Crz8Z2nvU82o_MXgfpjVoGY757SadQ-41CdpEH_ULfRSprQMnvIaxUzmC0Ij8YKcfVqtBffQTwYJoKAvIYWgq50OIo4f_iL_s8ctmONZ3BH8kLpyI11IC-p7LDPCCISBOxM7_4l1YZ-IB0HFXexeI8zd3zp_nM00AZEKsvYjFlZrUPNMDps4P2ot2Qb3Ginxiit3O_iqOgNCfgYjbzvrY6UKzi6-UowqIUtxwZObXswWoB40_0oY708WckAcUclw_14DSFd42-Hlfn-PCcFMrsD5E8YDmvrsWmuc_Wf5OpneA0fsTfyCfX2kNh2tfldn_MlmZIO3YrhxK6Silfc8tnFIJU8qHGVezYjZ-2YnyrXv84eOZDI8bgKSKjPiYYYnKlXxV8HpDFByR4XDP58NXypeKivCasZRj1IA38LKW9xY50YpJl_WgfxE5Exs1tZCmiNyH7i6P4bCFgwvgSCtrr_Iew7mIAVbcV1QY8_1wx85Pg3TKQVk6VyOYg8dxeOio9wMNynRXJI66S8l3IB_zQC559FNXzWmwtexYt3tcSeKJPnnHhSf1pqO2o50Oh5x-DMvbSoqZhJA3O0Uej4zLcVdxh4A2t1OsQj3D0QU07-aUF3vkABDxfrA_pTUMQxAZ3i5XAKyT49OLMTmSN9Egu5GzJTFEdgIEzxYH01fakmwgWXhZJ9fSjX_SRETH4gKmdVWaiFHHQLinZgmPgMMnmx2no-kp-prfavm7MEKhQz4SBTteJrjLrDUbmVcJjrDf8NCQhZ3stdJGfgHiZo3MO7u.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_07f3aed6a260a57f016b074489fd5887d185cb51eb805b092d",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -190,32 +195,20 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_zclzqS3WvyT5A50yfRsWtD5w",
-          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"invoiceNumber\",\"type\":\"text\"},{\"name\":\"customerName\",\"type\":\"text\"},{\"name\":\"outstandingCents\",\"type\":\"money\"},{\"name\":\"invoiceDate\",\"type\":\"date\"},{\"name\":\"dueDate\",\"type\":\"date\"},{\"name\":\"totalCents\",\"type\":\"money\"},{\"name\":\"allocatedCents\",\"type\":\"money\"},{\"name\":\"settledOn\",\"type\":\"date\"},{\"name\":\"currency\",\"type\":\"text\"}],\"rows\":[{\"id\":\"a0774a4a-a630-41ba-8364-bcb715ff0c6a\",\"invoiceNumber\":\"INV-2026-05-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-01\",\"dueDate\":\"2026-05-15\",\"totalCents\":500000,\"allocatedCents\":500000,\"settledOn\":\"2026-05-22\",\"currency\":\"SGD\"},{\"id\":\"a78b0f9b-1858-4004-894e-d3044ea138ba\",\"invoiceNumber\":\"INV-2026-05-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-02\",\"dueDate\":\"2026-05-16\",\"totalCents\":820000,\"allocatedCents\":820000,\"settledOn\":\"2026-05-13\",\"currency\":\"SGD\"},{\"id\":\"7410921a-e71a-4fc7-8719-9f9fd86a12ed\",\"invoiceNumber\":\"INV-2026-05-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-03\",\"dueDate\":\"2026-05-17\",\"totalCents\":640000,\"allocatedCents\":640000,\"settledOn\":\"2026-05-22\",\"currency\":\"SGD\"},{\"id\":\"23cff86f-2541-484e-8223-55f4c4fc200f\",\"invoiceNumber\":\"INV-2026-05-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-04\",\"dueDate\":\"2026-05-18\",\"totalCents\":360000,\"allocatedCents\":360000,\"settledOn\":\"2026-06-07\",\"currency\":\"SGD\"},{\"id\":\"e289236b-80b6-4c3b-8ef6-a26f7400758a\",\"invoiceNumber\":\"INV-2026-05-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-05\",\"dueDate\":\"2026-05-19\",\"totalCents\":420000,\"allocatedCents\":420000,\"settledOn\":\"2026-05-17\",\"currency\":\"SGD\"},{\"id\":\"6bdb5bf1-0b6b-4cfe-8920-6ad7f8834da5\",\"invoiceNumber\":\"INV-2026-05-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":0,\"invoiceDate\":\"2026-05-06\",\"dueDate\":\"2026-05-20\",\"totalCents\":750000,\"allocatedCents\":750000,\"settledOn\":\"2026-05-20\",\"currency\":\"SGD\"},{\"id\":\"a562050b-c5eb-436c-8ad3-4babb355ab2d\",\"invoiceNumber\":\"INV-2026-06-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-01\",\"dueDate\":\"2026-06-15\",\"totalCents\":530000,\"allocatedCents\":530000,\"settledOn\":\"2026-06-25\",\"currency\":\"SGD\"},{\"id\":\"168c8566-dd77-49fe-83a1-4e8dffb35f85\",\"invoiceNumber\":\"INV-2026-06-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-02\",\"dueDate\":\"2026-06-16\",\"totalCents\":870000,\"allocatedCents\":870000,\"settledOn\":\"2026-06-13\",\"currency\":\"SGD\"},{\"id\":\"f1426d31-5ceb-4348-8e99-93703cce23f8\",\"invoiceNumber\":\"INV-2026-06-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-03\",\"dueDate\":\"2026-06-17\",\"totalCents\":660000,\"allocatedCents\":660000,\"settledOn\":\"2026-06-23\",\"currency\":\"SGD\"},{\"id\":\"88c5668f-e392-4d9b-83b4-98ced569321f\",\"invoiceNumber\":\"INV-2026-06-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-04\",\"dueDate\":\"2026-06-18\",\"totalCents\":375000,\"allocatedCents\":375000,\"settledOn\":\"2026-07-08\",\"currency\":\"SGD\"},{\"id\":\"cad800ee-d942-44e6-8e62-8d028754bcb0\",\"invoiceNumber\":\"INV-2026-06-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-05\",\"dueDate\":\"2026-06-19\",\"totalCents\":445000,\"allocatedCents\":445000,\"settledOn\":\"2026-06-17\",\"currency\":\"SGD\"},{\"id\":\"9791b8ef-4565-4e9b-80b2-1e1080b6ecba\",\"invoiceNumber\":\"INV-2026-06-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":0,\"invoiceDate\":\"2026-06-06\",\"dueDate\":\"2026-06-20\",\"totalCents\":790000,\"allocatedCents\":790000,\"settledOn\":\"2026-06-24\",\"currency\":\"SGD\"},{\"id\":\"e9b1c065-5602-49e5-8137-94388af5f560\",\"invoiceNumber\":\"INV-2026-07-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-01\",\"dueDate\":\"2026-07-15\",\"totalCents\":560000,\"allocatedCents\":560000,\"settledOn\":\"2026-07-15\",\"currency\":\"SGD\"},{\"id\":\"5644bc06-7b44-482b-8d4b-3fc8b0a4d0f4\",\"invoiceNumber\":\"INV-2026-07-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-02\",\"dueDate\":\"2026-07-16\",\"totalCents\":920000,\"allocatedCents\":920000,\"settledOn\":\"2026-07-13\",\"currency\":\"SGD\"},{\"id\":\"ae043e66-a71c-4ab2-877b-b39d9fb72105\",\"invoiceNumber\":\"INV-2026-07-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-03\",\"dueDate\":\"2026-07-17\",\"totalCents\":680000,\"allocatedCents\":680000,\"settledOn\":\"2026-07-24\",\"currency\":\"SGD\"},{\"id\":\"ded80f8c-93d7-4fe3-80d9-467dac4a1b17\",\"invoiceNumber\":\"INV-2026-07-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-04\",\"dueDate\":\"2026-07-18\",\"totalCents\":390000,\"allocatedCents\":390000,\"settledOn\":\"2026-08-07\",\"currency\":\"SGD\"},{\"id\":\"41e37fc3-615c-4432-8920-1b9ed2665512\",\"invoiceNumber\":\"INV-2026-07-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-05\",\"dueDate\":\"2026-07-19\",\"totalCents\":470000,\"allocatedCents\":470000,\"settledOn\":\"2026-07-17\",\"currency\":\"SGD\"},{\"id\":\"d6899470-cc06-4f75-856b-13b814776932\",\"invoiceNumber\":\"INV-2026-07-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":0,\"invoiceDate\":\"2026-07-06\",\"dueDate\":\"2026-07-20\",\"totalCents\":830000,\"allocatedCents\":830000,\"settledOn\":\"2026-07-20\",\"currency\":\"SGD\"},{\"id\":\"fbf00e88-64ff-40e0-87f4-28271424d8f4\",\"invoiceNumber\":\"INV-2026-08-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":0,\"invoiceDate\":\"2026-08-01\",\"dueDate\":\"2026-08-15\",\"totalCents\":590000,\"allocatedCents\":590000,\"settledOn\":\"2026-08-27\",\"currency\":\"SGD\"},{\"id\":\"f1d3d78a-3e8f-4906-82ac-c139078a78e2\",\"invoiceNumber\":\"INV-2026-08-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-08-02\",\"dueDate\":\"2026-08-16\",\"totalCents\":970000,\"allocatedCents\":970000,\"settledOn\":\"2026-08-13\",\"currency\":\"SGD\"},{\"id\":\"22b7ade6-b124-4d93-8c3a-1e6e7c3de694\",\"invoiceNumber\":\"INV-2026-08-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":0,\"invoiceDate\":\"2026-08-03\",\"dueDate\":\"2026-08-17\",\"totalCents\":700000,\"allocatedCents\":700000,\"settledOn\":\"2026-08-25\",\"currency\":\"SGD\"},{\"id\":\"967d6fb2-b4b1-4569-85be-8acffd63e4dc\",\"invoiceNumber\":\"INV-2026-08-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":405000,\"invoiceDate\":\"2026-08-04\",\"dueDate\":\"2026-08-18\",\"totalCents\":405000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"ada70373-cdf5-4c2d-8e43-48f3b7cd59bb\",\"invoiceNumber\":\"INV-2026-08-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-08-05\",\"dueDate\":\"2026-08-19\",\"totalCents\":495000,\"allocatedCents\":495000,\"settledOn\":\"2026-08-17\",\"currency\":\"SGD\"},{\"id\":\"61115423-5545-416a-8e9d-4ef44c2156cc\",\"invoiceNumber\":\"INV-2026-08-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":0,\"invoiceDate\":\"2026-08-06\",\"dueDate\":\"2026-08-20\",\"totalCents\":870000,\"allocatedCents\":870000,\"settledOn\":\"2026-08-24\",\"currency\":\"SGD\"},{\"id\":\"9ff80baf-0e9f-4f57-8173-92bc97b05a9e\",\"invoiceNumber\":\"INV-2026-09-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":0,\"invoiceDate\":\"2026-09-01\",\"dueDate\":\"2026-09-15\",\"totalCents\":620000,\"allocatedCents\":620000,\"settledOn\":\"2026-09-23\",\"currency\":\"SGD\"},{\"id\":\"7815df58-1840-44b4-8d69-f5bf256587df\",\"invoiceNumber\":\"INV-2026-09-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-09-02\",\"dueDate\":\"2026-09-16\",\"totalCents\":1020000,\"allocatedCents\":1020000,\"settledOn\":\"2026-09-13\",\"currency\":\"SGD\"},{\"id\":\"74eb9200-c209-4368-8085-9081540617a8\",\"invoiceNumber\":\"INV-2026-09-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":520000,\"invoiceDate\":\"2026-09-03\",\"dueDate\":\"2026-09-17\",\"totalCents\":720000,\"allocatedCents\":200000,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"c98bb2fb-fb22-475a-81db-a3f73a5b696c\",\"invoiceNumber\":\"INV-2026-09-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":420000,\"invoiceDate\":\"2026-09-04\",\"dueDate\":\"2026-09-30\",\"totalCents\":420000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"c766195d-7395-42bb-8739-3783409beaa5\",\"invoiceNumber\":\"INV-2026-09-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-09-05\",\"dueDate\":\"2026-09-19\",\"totalCents\":520000,\"allocatedCents\":520000,\"settledOn\":\"2026-09-17\",\"currency\":\"SGD\"},{\"id\":\"afdd6a22-daf6-4371-8061-58d46cf7b1c6\",\"invoiceNumber\":\"INV-2026-09-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":0,\"invoiceDate\":\"2026-09-06\",\"dueDate\":\"2026-09-20\",\"totalCents\":910000,\"allocatedCents\":910000,\"settledOn\":\"2026-09-20\",\"currency\":\"SGD\"},{\"id\":\"4aa4d28e-7fda-4ae3-8170-0a4733b92d61\",\"invoiceNumber\":\"INV-2026-10-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":650000,\"invoiceDate\":\"2026-10-01\",\"dueDate\":\"2026-10-15\",\"totalCents\":650000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"4c6779d1-d1cd-4b17-8718-e706bbee1892\",\"invoiceNumber\":\"INV-2026-10-02\",\"customerName\":\"Apex Digital\",\"outstandingCents\":0,\"invoiceDate\":\"2026-10-02\",\"dueDate\":\"2026-10-16\",\"totalCents\":1070000,\"allocatedCents\":1070000,\"settledOn\":\"2026-10-13\",\"currency\":\"SGD\"},{\"id\":\"da68d9e4-d1a8-4072-8ecf-ed60896b5089\",\"invoiceNumber\":\"INV-2026-10-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":740000,\"invoiceDate\":\"2026-10-03\",\"dueDate\":\"2026-10-17\",\"totalCents\":740000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"e090b6a9-225a-4faf-8364-5e0b15886b52\",\"invoiceNumber\":\"INV-2026-10-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":435000,\"invoiceDate\":\"2026-10-04\",\"dueDate\":null,\"totalCents\":435000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"},{\"id\":\"ca4163e2-142a-4f9e-8f97-6c091f4ba04a\",\"invoiceNumber\":\"INV-2026-10-05\",\"customerName\":\"Lumi Design\",\"outstandingCents\":0,\"invoiceDate\":\"2026-10-05\",\"dueDate\":\"2026-10-19\",\"totalCents\":545000,\"allocatedCents\":545000,\"settledOn\":\"2026-10-16\",\"currency\":\"SGD\"},{\"id\":\"18246dd1-c20b-4c2a-8141-0b13d2a55e79\",\"invoiceNumber\":\"INV-2026-10-06\",\"customerName\":\"Meridian Labs\",\"outstandingCents\":950000,\"invoiceDate\":\"2026-10-06\",\"dueDate\":\"2026-11-05\",\"totalCents\":950000,\"allocatedCents\":0,\"settledOn\":null,\"currency\":\"SGD\"}],\"truncated\":false}",
-          "name": "query-dataset"
-        },
-        {
-          "role": "tool",
-          "tool_call_id": "call_Oo9ebl9oTu0MckwzVRwRgtaI",
-          "content": "{\"dataset\":\"invoices.allocations\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"invoiceId\",\"type\":\"text\"},{\"name\":\"invoiceNumber\",\"type\":\"text\"},{\"name\":\"paymentReference\",\"type\":\"text\"},{\"name\":\"paymentDate\",\"type\":\"date\"},{\"name\":\"amountCents\",\"type\":\"money\"},{\"name\":\"currency\",\"type\":\"text\"}],\"rows\":[{\"invoiceId\":\"a78b0f9b-1858-4004-894e-d3044ea138ba\",\"invoiceNumber\":\"INV-2026-05-02\",\"paymentReference\":\"TXN-PAY-2026-002\",\"paymentDate\":\"2026-05-13\",\"amountCents\":820000,\"currency\":\"SGD\"},{\"invoiceId\":\"e289236b-80b6-4c3b-8ef6-a26f7400758a\",\"invoiceNumber\":\"INV-2026-05-05\",\"paymentReference\":\"TXN-PAY-2026-005\",\"paymentDate\":\"2026-05-17\",\"amountCents\":420000,\"currency\":\"SGD\"},{\"invoiceId\":\"6bdb5bf1-0b6b-4cfe-8920-6ad7f8834da5\",\"invoiceNumber\":\"INV-2026-05-06\",\"paymentReference\":\"TXN-PAY-2026-006\",\"paymentDate\":\"2026-05-20\",\"amountCents\":750000,\"currency\":\"SGD\"},{\"invoiceId\":\"a0774a4a-a630-41ba-8364-bcb715ff0c6a\",\"invoiceNumber\":\"INV-2026-05-01\",\"paymentReference\":\"TXN-PAY-2026-001\",\"paymentDate\":\"2026-05-22\",\"amountCents\":500000,\"currency\":\"SGD\"},{\"invoiceId\":\"7410921a-e71a-4fc7-8719-9f9fd86a12ed\",\"invoiceNumber\":\"INV-2026-05-03\",\"paymentReference\":\"TXN-PAY-2026-003\",\"paymentDate\":\"2026-05-22\",\"amountCents\":640000,\"currency\":\"SGD\"},{\"invoiceId\":\"23cff86f-2541-484e-8223-55f4c4fc200f\",\"invoiceNumber\":\"INV-2026-05-04\",\"paymentReference\":\"TXN-PAY-2026-004\",\"paymentDate\":\"2026-06-07\",\"amountCents\":360000,\"currency\":\"SGD\"},{\"invoiceId\":\"168c8566-dd77-49fe-83a1-4e8dffb35f85\",\"invoiceNumber\":\"INV-2026-06-02\",\"paymentReference\":\"TXN-PAY-2026-008\",\"paymentDate\":\"2026-06-13\",\"amountCents\":870000,\"currency\":\"SGD\"},{\"invoiceId\":\"cad800ee-d942-44e6-8e62-8d028754bcb0\",\"invoiceNumber\":\"INV-2026-06-05\",\"paymentReference\":\"TXN-PAY-2026-011\",\"paymentDate\":\"2026-06-17\",\"amountCents\":445000,\"currency\":\"SGD\"},{\"invoiceId\":\"f1426d31-5ceb-4348-8e99-93703cce23f8\",\"invoiceNumber\":\"INV-2026-06-03\",\"paymentReference\":\"TXN-PAY-2026-009\",\"paymentDate\":\"2026-06-23\",\"amountCents\":660000,\"currency\":\"SGD\"},{\"invoiceId\":\"9791b8ef-4565-4e9b-80b2-1e1080b6ecba\",\"invoiceNumber\":\"INV-2026-06-06\",\"paymentReference\":\"TXN-PAY-2026-012\",\"paymentDate\":\"2026-06-24\",\"amountCents\":790000,\"currency\":\"SGD\"},{\"invoiceId\":\"a562050b-c5eb-436c-8ad3-4babb355ab2d\",\"invoiceNumber\":\"INV-2026-06-01\",\"paymentReference\":\"TXN-PAY-2026-007\",\"paymentDate\":\"2026-06-25\",\"amountCents\":530000,\"currency\":\"SGD\"},{\"invoiceId\":\"88c5668f-e392-4d9b-83b4-98ced569321f\",\"invoiceNumber\":\"INV-2026-06-04\",\"paymentReference\":\"TXN-PAY-2026-010\",\"paymentDate\":\"2026-07-08\",\"amountCents\":375000,\"currency\":\"SGD\"},{\"invoiceId\":\"5644bc06-7b44-482b-8d4b-3fc8b0a4d0f4\",\"invoiceNumber\":\"INV-2026-07-02\",\"paymentReference\":\"TXN-PAY-2026-014\",\"paymentDate\":\"2026-07-13\",\"amountCents\":920000,\"currency\":\"SGD\"},{\"invoiceId\":\"e9b1c065-5602-49e5-8137-94388af5f560\",\"invoiceNumber\":\"INV-2026-07-01\",\"paymentReference\":\"TXN-PAY-2026-013\",\"paymentDate\":\"2026-07-15\",\"amountCents\":560000,\"currency\":\"SGD\"},{\"invoiceId\":\"41e37fc3-615c-4432-8920-1b9ed2665512\",\"invoiceNumber\":\"INV-2026-07-05\",\"paymentReference\":\"TXN-PAY-2026-017\",\"paymentDate\":\"2026-07-17\",\"amountCents\":470000,\"currency\":\"SGD\"},{\"invoiceId\":\"d6899470-cc06-4f75-856b-13b814776932\",\"invoiceNumber\":\"INV-2026-07-06\",\"paymentReference\":\"TXN-PAY-2026-018\",\"paymentDate\":\"2026-07-20\",\"amountCents\":830000,\"currency\":\"SGD\"},{\"invoiceId\":\"ae043e66-a71c-4ab2-877b-b39d9fb72105\",\"invoiceNumber\":\"INV-2026-07-03\",\"paymentReference\":\"TXN-PAY-2026-015\",\"paymentDate\":\"2026-07-24\",\"amountCents\":680000,\"currency\":\"SGD\"},{\"invoiceId\":\"ded80f8c-93d7-4fe3-80d9-467dac4a1b17\",\"invoiceNumber\":\"INV-2026-07-04\",\"paymentReference\":\"TXN-PAY-2026-016\",\"paymentDate\":\"2026-08-07\",\"amountCents\":390000,\"currency\":\"SGD\"},{\"invoiceId\":\"f1d3d78a-3e8f-4906-82ac-c139078a78e2\",\"invoiceNumber\":\"INV-2026-08-02\",\"paymentReference\":\"TXN-PAY-2026-020\",\"paymentDate\":\"2026-08-13\",\"amountCents\":970000,\"currency\":\"SGD\"},{\"invoiceId\":\"ada70373-cdf5-4c2d-8e43-48f3b7cd59bb\",\"invoiceNumber\":\"INV-2026-08-05\",\"paymentReference\":\"TXN-PAY-2026-022\",\"paymentDate\":\"2026-08-17\",\"amountCents\":495000,\"currency\":\"SGD\"},{\"invoiceId\":\"61115423-5545-416a-8e9d-4ef44c2156cc\",\"invoiceNumber\":\"INV-2026-08-06\",\"paymentReference\":\"TXN-PAY-2026-023\",\"paymentDate\":\"2026-08-24\",\"amountCents\":870000,\"currency\":\"SGD\"},{\"invoiceId\":\"22b7ade6-b124-4d93-8c3a-1e6e7c3de694\",\"invoiceNumber\":\"INV-2026-08-03\",\"paymentReference\":\"TXN-PAY-2026-021\",\"paymentDate\":\"2026-08-25\",\"amountCents\":700000,\"currency\":\"SGD\"},{\"invoiceId\":\"fbf00e88-64ff-40e0-87f4-28271424d8f4\",\"invoiceNumber\":\"INV-2026-08-01\",\"paymentReference\":\"TXN-PAY-2026-019\",\"paymentDate\":\"2026-08-27\",\"amountCents\":590000,\"currency\":\"SGD\"},{\"invoiceId\":\"7815df58-1840-44b4-8d69-f5bf256587df\",\"invoiceNumber\":\"INV-2026-09-02\",\"paymentReference\":\"TXN-PAY-2026-025\",\"paymentDate\":\"2026-09-13\",\"amountCents\":1020000,\"currency\":\"SGD\"},{\"invoiceId\":\"c766195d-7395-42bb-8739-3783409beaa5\",\"invoiceNumber\":\"INV-2026-09-05\",\"paymentReference\":\"TXN-PAY-2026-027\",\"paymentDate\":\"2026-09-17\",\"amountCents\":520000,\"currency\":\"SGD\"},{\"invoiceId\":\"afdd6a22-daf6-4371-8061-58d46cf7b1c6\",\"invoiceNumber\":\"INV-2026-09-06\",\"paymentReference\":\"TXN-PAY-2026-028\",\"paymentDate\":\"2026-09-20\",\"amountCents\":910000,\"currency\":\"SGD\"},{\"invoiceId\":\"9ff80baf-0e9f-4f57-8173-92bc97b05a9e\",\"invoiceNumber\":\"INV-2026-09-01\",\"paymentReference\":\"TXN-PAY-2026-024\",\"paymentDate\":\"2026-09-23\",\"amountCents\":620000,\"currency\":\"SGD\"},{\"invoiceId\":\"74eb9200-c209-4368-8085-9081540617a8\",\"invoiceNumber\":\"INV-2026-09-03\",\"paymentReference\":\"TXN-PAY-2026-026\",\"paymentDate\":\"2026-10-10\",\"amountCents\":200000,\"currency\":\"SGD\"},{\"invoiceId\":\"4c6779d1-d1cd-4b17-8718-e706bbee1892\",\"invoiceNumber\":\"INV-2026-10-02\",\"paymentReference\":\"TXN-PAY-2026-029\",\"paymentDate\":\"2026-10-13\",\"amountCents\":1070000,\"currency\":\"SGD\"},{\"invoiceId\":\"ca4163e2-142a-4f9e-8f97-6c091f4ba04a\",\"invoiceNumber\":\"INV-2026-10-05\",\"paymentReference\":\"TXN-PAY-2026-030\",\"paymentDate\":\"2026-10-16\",\"amountCents\":545000,\"currency\":\"SGD\"}],\"truncated\":false}",
-          "name": "query-dataset"
-        },
-        {
-          "role": "tool",
-          "tool_call_id": "call_89PxzhWK3rVXSQqX972IZEB5",
-          "content": "{\"artifact\":1,\"version\":1,\"title\":\"Monthly invoiced and collected (SGD)\"}",
+          "tool_call_id": "call_d0dce35a991747e8a8273be72abdc74b",
+          "content": "{\"artifact\":1,\"version\":1,\"title\":\"Monthly invoiced sales and collections (SGD)\"}",
           "name": "make-artifact"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_DoUW3CMzAT2FUbJK3LmjLpw1",
-          "content": "{\"artifact\":2,\"version\":1,\"title\":\"Invoices from May to October 2026\"}",
+          "tool_call_id": "call_3d1050f0f104438c99c5c679f533e301",
+          "content": "{\"artifact\":2,\"version\":1,\"title\":\"Invoices from May to October\"}",
           "name": "make-artifact"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_P9ojQmfAvWhTXj1F0BxbXKN3",
-          "content": "{\"artifact\":3,\"version\":1,\"title\":\"Payments from May to October 2026\"}",
+          "tool_call_id": "call_cce36cb1ef2d42fb9f70b887134213b1",
+          "content": "{\"artifact\":3,\"version\":1,\"title\":\"Payments from May to October\"}",
           "name": "make-artifact"
         }
       ],
@@ -2442,9 +2435,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2457,9 +2450,9 @@
               "reasoning_details": [
                 {
                   "type": "reasoning.encrypted",
-                  "data": "gAAAAABq9YN1kUTUKYzjfOeUzG_ZvbEwX3M_J7NkeQCLhrPeKcGaUMG_UYScjxFvCofgUK_B8NjeS5KL1k5fV15X_u5kyNNaw4yH6rktXbKX_RgDQdwXDU3io3eigbrE1kcI_YbEEzAiZN3f8-dCUFW9fmXRL8mzvp-pATLqlgtHq4XrNx-279poRKTzHus9vVFh2S1nBvsh4Qx_5O42gamG-QZd5DBadW4tkFK8M_pnQ6FROYmVaLev4_Z6Lm8K_iN74iVcTzxOgr58gty_stO1Wuu6-RVi1x5uVUKPTX2eOMtW-f3WiFa8aooBVEQxBAkcGG0aM7aq4T2Por-ZG-HZdsGEKexFZwFFU0_ZavurE7IugratK8LAp2WulB6lY8N6crZN9x5G-8iaMywnRBcM-0CRd99mkbU1kdEpMGC9giMdzP0hLSs_LVrUmL9uXESzn3ytE7fDO1MCp-YvlQ7Kg1jhLx94lMzZozG1EbohdFplgjOPR4D4pcEsUxC1fm6zur860tG5qvGO6pHiXwua2S_0gX9MD3QKf4jo63EDTfe1dvOI2JtBKLxrJAhYO0V1zG1Jf4ayij_E2bJGDLXfF-X8qL4DEGe_LydB4jimNfK0gmdKUDkZyc-BYvv0I8wOOHTlHxwoZaEPZqzHAjoIfFiLNpVSO_yxXdIud5icKjzUyfU1chmx78KB0jnL8ZKK6FS4rsj6kULp7N839AeHfwqb9YSaQfXVAQ6gtx4ajldcz173v6ogQKPanaQV5i8I1f12vwJHWRVcxYdjIHht0-7XoKcVunDbPH1MyCmEq2yc8Xkz0ulPpHkddLSXx8aTO8Tf2TCAnpK29od24jMuNgJ-8QVpdmZZpZXvtyQRI26ncos0s8W9vHatSvWiA8lpLhEk8tgaVzC_gjC6A76uMkYzcQLhFA61sFhbPOGy7K5L9lpVSqwwRLlApPpElSu9vK1GQtcyg6wL61LzvXfZzpV0LDPAQe3d9709ZR0WtV9jvMI3qBqkN46ORmQ6Ts6vYDv_9vp3pfGFAHY3bsRpDFcXZNK4RL1K_xOCC_atWd5BiGWzlI9mZEeq4F0C3ji0B7cL8GHbQ5FRmfodCht3rexqJKOi8hdr1y9uLR5cm9DOM4SvR1bZGi8cDCbQtfdUaM3wBVQzopbQQzH2QZvqqFHNzptNv2ejSv3pSBfD96z8BBT9NEubNmq7SV8h8LFtWYahv2A7r1heic8yud3qaN1UBjN-jKDZYo1fYENNK6UvhAfRNX4ekZ1cUXGkV2lqcx2TBNtQYaAqNHLpIN11Ow-2x5j6gJzSpwurbQ-8hpiaxzYH1CNPmYgxYEHyqJ7ftHVGDb-VCd_HF_VvuFCmecRB37dEx1fBJgKb0bTM9K2PXm2Ck72CtUNcbmUxjFDh_z7N75EJImSh7gkaeyl4zRMhekOpMsqCokwWYZSrabeSO8F-AQL3Zw0WPSVEoynTmc9PXr2Jib6tI37sUeqAT_f2CGvvW6TNQlTbeG0cpVtlsOK0dnZGTj7vGLkB05saCK7loblUp5CQ0unuihwF_ECZehIy69lFGHJPmRaTOIgL_uKwgGaHN-kTtiwALkAaCssjc8DQWV7xhiTN9f9zv5-i3t0KacIWZAizqccR7M_fdH67u1g18TDfs1geFMl6leLQjwzJD68Fcrl_clyptRcivgikV_xTScGmzXHZzDUAkSj418ejbNEciEqPzr7O9bCvGOOR3zrlNSD8lrRBHp-NUFj5WcSMTyRVEb5OL5G_haqmNkCkDOykfK--qeHHsMnSyNDqiQcq360ItTM0CHwSr8xIcZo_n1OrRedkcWUan9RGs2cSZ8dE6UHKuUcoZfu27OUogKaz7GIvmdQ4N5o_zK_oBRV0InJBcXDo6hihM4p2yJCrESjxa6_HIoacn92-_9MdhHsjOM3x0dl5RL0d-mODnu4yqMrncYY3U9A25gHWdRKcl88Ylo1BBRstbYQIkizDco57NZ7poxiZeVwvTrNB8lYziTC5pRpCiEayjOYeOGsUlU7x7SmG6u6aMaPjrn_vEmpJMZ_GmFOCyPfI6B0VD1y_kbCgbmiMTxyYrTLlqjhw31Ctmx9d6F2Muq8CRJO_hcbryiOMS_9GND9ai_Iqg8pIlXPVsjMc0tzYZu2X_Ed2VaLO4SLFpu3GQO7xO4zbGT3I8hBaUJ0Oh83UEMNQy8nE1I_AchBcdpDw5Ak_dikDGacZCgqPv5OmpLvPgRHQLyMCvFzPqbGzxWaibgmSyHRionbUx9zNXp8PPccvC-mn6AX2s9HlysH5fYhpx8MdwWw5ZzxfSW1bNLvvK5KeW6mShZGniqnS0aLI5LIEreAJLMOJM9Hznoobf20CsZsouh8qoLmgN_bzmDwSnYkWFFmycbaAc6_8tIgd0Pggiudw03YA018MrMEH-iS6Lhn0tXiP5NUv39TXSN0GQAe664NBGRq-RaEjZoM9GcECIuuGQUJhiTDDSGcmxgedKD4n2uPJje8OdsQf81fx1_tRbUux2cfMZfvQCWvJtohWV-ccaYk5jcnbexvBThfGYsnR55QFd2MdyzySrwuzaZC5HFn4h9flOFfzBqp2UaDoYvXcA_yWFjwUirhmV5pLTTS7LvBnvJ9rQdz5rHRwfI7WSDBBlzXTS7clgmlxUgKvcnK1EIntfGuJaVcJJS7Pe5ERZbtvL2Ax9Y99T3eTtBh0SB1LqkBp7u_13RlgyL2nINB69V_KmPH2DP9L9pmzoZuO1fSm671sqHn25vR6y8-u81KW1rDX1dbRhIe5jEoNH6Az7YEoQwR0JEn6sLeJz7IEDuk6XxVdfMSzocYtcBwyR2vGVlD4wavaI4J2p99j_69iYnqumZlP_YDc8E3GMjZaRXgdG1RJ51N_tzfqmxc1eMQAu_AiR8sQ_u_9TKSSaT0L1gEf9GiaF8xbHOaWNN1EWAkFA0ow0-L12fTUkJH8S3wkTL97xHjDhrbBXlqdoKwm95AZl0ppX9Ad1s-i9_DFxgmKNJXHhoOlkcnttXRAlLvC4q3nAgkq5saZDSlgc2kckswM-2TIw_KaQaqEGto2J2666-Jjw1yAXmx3Xq2xOm9l-dX2ctn0yzFosafbDSinGErzZZACIC-Yp8qVT92Pg0lT3SyanAR51MdaYM0hVrKlZto-aVaFCwYRpgCvWdjdTH3mZPWT7McbKPbay4E7D05HvP4XnLTMj7R_hVY4Z23wXUTVX8q7y2Xt5_dqJOpWyWZ5bSkKCoCsDCfHTBz2_xLYt8SrPyFpN6sGKlBojjF2o5vm9XBTb0GkXTXyhgwgEqmzIPXbBVrxBfp4dgdHSeew-ytg23AO2zp3kuf4QdNS-QCPkXrxKOkxl5xrkpCLLbTgLHyc6JpO1rfkjpq_TdjOo0MaAfHMnssaf0AHerVGap596eSESJDwT_Qs3MZlFI2S4gwph58vFFYIYihfmvIUT4nlS_uSJ49ZRYHMr33aZTpdU8_-PjnZv0ztACc9Me7Uakvg9k9EkaQxzKMdXi93Ij8yaKp_wmLgTL64C7wPfH5a5Zi5ba4qVQJlkj_jGJBDQthH2URPVv7d5ITJiNPbqhrsOjKuDIK_zh_GfUG_BqZFpza3t76ba5GZlVC2B6fAGnje7gdBVNiTReA50X0yPvf0B6VTi4PE-LEmJDr5oJFYhHAfNaroprW-Uz37EHRFGnBiUAv3cUDWHqacXxrvmKXcT37mXfzMVHIdzw==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                  "data": "gAAAAABrB0SXjC3Q5lOBe8z3kSPMlvAHIQn1w7wxkc0Bix_3wSHpcdj4USIL7mKGhjn_EyV7oZ4ohVdIoa9WmQw7jiB_SBw8BmrbbLdSNcM8iISLXv9aoTjQlAlew9qNM3JDGNdRNNkyj2PWLuJ8Eliun6rFXCTLy_xLxYUVNHvBqc-LwlufqeybWuNZbVepa_C5P4AjI_Tdsqw7xvzO7p_Gr_5K9XM_u-0NNQdVjOXhbIm6hY62pc6MML7Ri816dmmWgxKGZjNngiqa4XHybx1cpVIrU8xPQLIuA_hA-6-10QrWGsQy2hhb55lkHQtdYNa2ukel1Xz0h70eaICSpZT44QuATj3SfKTx76-f6sFpVpFnbqZ2xDoqtHUvF_KppYAH-K4LKsAaJZPQdvan77GIfXoFyMR6p2Mp44W8-Ytl7x11W0InMoAXjhlpZ5dhUoCmmo8oyKx3be3V6bg9j_J__aRpbLeUjiKGUHWLs8AYYx4tRMOnqq35fA9vPBB37tF28Yfdl9oEQdk5Eem3dgHh6SSd_ZSiM8P2n2_yzXmUWingif2Wl1Y9q-rRTcRMwMFBxZEEaaCryWg_z-3Y2vaYu-fV86KVcpeptJc1cfV4mQ3Hetj84-qvuHeLKmeqkAjs1q_B_-LpGTO_TrXbYCJ8vp5GGK4d9Lr9djFoTkbNcd1hPBb8dGbRHPVhgzVINCOyxizeiW4-wpSWBRcBDBrren4VAoQZXZQnZkO2ex2OdWixE0XSazZ2d_Je2afGWx9yaTEd8Q1KHZg-5nrurBOa4F0W3NGDSN5GC4g6wPcCDvTvW3f8Ne3JKjhwk3njuhCsbGSBjWRj17Ru1p8zY7tpcDwbTr8BK80UlP3ZbWFB0Z-am6CHnLQi4Uds5STE_2NCOxsm6kjO8phGsq9YGuZRILw3Dva4SX-5ZxpeacipG45ulljRPFx2n1Ov99Mtd3ERrIn1L8ijlLqMT6WOz5-0C0-nJwE0OvqF-aCEKZ0P78t2jRz_6uq-pqoXyP-MV7kwmaBz-ZjJyr3wX5cupdr8AgALUeVP3liYIjNFT6sS9KSEIHR4MrDe9Ir7XKpbIz5IQmxWb2CQ5zPRMHYRov52SfguGhQAGCDY-3wyhmDjh7rw4EUs5VVVUeAL_YeKhuM0R2VC4R5YsLDht8y1kCSmKNX4eWd5lb0rkR_IDByKkBX4uR0LFAC7zxWPO3v_xCs_JTsABgy67WRQO0Gk3J8N_OrONp6TpJEhn2YXs2qZqFxt4_kAEQYwN3MAAGg2BMH8ThJNDJ9H43n8Dg2CD-kpf1sTC7wC54YlTk0SvMsPRnAZltlfdrAU6W2VxLa1pcfdIhJV5HzXzT8t23tRRTt37BpuOrTt6bFTmYfqV_o1VLC9YWmz-nVziPWKCTZ_KrQ_HkCSukVh1Eo0IczjtzCl3v5S8xHvWjK8oF8lwBz1AYGRx3V4rnb3MkkihI6I4BwYqCtnIp9TOJlwE1O6iSGXEWj3DWQ8MTzOY88WGzBsMFIjyhStT7B6wrLCBocfqw21qIMqOST_OJlr6cG-AVzWOfAGPfTSy79WAOsS7slJCo_Sydlj0NN1AD7sglCZekVgj7WqBBhB46bnKcVEVgZiwczJ44pfu_5bEnuJq0Nc2oKyACKFgx30xTYnU26kdDHKVGgir-Ej-MXJQ4MN0FrZXER8kilStbrzi_Rh-71pg-W7AW0Njw5K64DSrfJtwbL277zlvsj7m7jPMOz1E_cl3sBWMSBT53NA8o9aK4fqtHEeUfyWS7s5NmdHPCwJjOdh3ke7sTZx6NE93VrpIhLiO4CTYqiyWe7hH_8K6Br8GV2SZtX5pVJ6SaOeF3qvEahWclgwu4nlqXhRhGfBX4WqbAlf7L7bHL928kdYEWpdostT2TSLLSZBk8CSi3U7yrkwphzNuHahXRAcMMSkYCjGdAuSYcL_6gYsm5IdJEgwVauGpkWLXqeas_H1qc7odyO0jSZ7RDLWc5GE_MG_uV7vRfMy9dThnxdgdpR7x-BtYK1mvW7CyF62s5rMK4jdBwXHQuqb2PTQhs_BQKesGmV5v803Xx7gv4LfnjD9BkwathKQmL4vqgaDHZbkwiIk1b7wZVIY2xlfsm5iivj3-QJx_F7VVaL8n1s6BUGPZcWXVfWA2WXi3mV0LqqIgGLuyi39WoUf0Xu1_J6BskejZQODMfdjwCEYgrLcprlkyV7ojIyF6xEMeFpssLZq5tfogJPCpNH_dc3fg6Nw4DU_XxsrLP_tG32RuWWl8XuBZn0WzoZtJDTKWTsDN44Z6q9qwwVqkm9LreUUCzoCpdO-6CwK8efvhhajIcHyEhJG-qvIt22C1gKLQMVHPpidZ6R8qjN2DMsNbrV-ZL-WLJKaAFi1wP_05dN2DyDLN1WippUmk_8ohpWLu8UFJizyBsZnPMTPRWC1Cd30FwQqB69sYQEfdyI8TkFTezJ52TWSGcVxsPBnk-gVCzpUXG5byonKavAJ5ayLsEF56qbWRPQapHOfXRd1dZ-P3mH8FpBLLnzbLnrD4kpjZtHtNdlvG6ifzhNlTwG6v1JRGskONg_sMHX6iGZYTAqF24bl5NxlbTU89wsNgLoo1wp1geT5yCjnHBJYvUBdodjz9IpdUQ7Nyr0GmImP31vnIyiXoxEO030_-shMwjPr21Ms5VrlTp-H1iy1xeP3W5FkcEu1kkg4t6Ei_PhIpDCg0URC-x0cSAE9jm1q7VgGly_YpbhpjryTnHP5LnPVZRrl48IJwhb7ky_jg8fl18ldLPPAh-GfKztGREtGXUglqYANDBY8x7mBn217rFCN0dY9QM2fYVPO6x4VacVI6Z7DkV8GgJzhE8ZBhOW6pGEfduIHLvYYyrDOW0K5GXaHZ7GUVGXQ0MWOopjt2IdW_5UtPqR5BFuYladdH7EL--vTxLpwxFnl-0z_u4oXH5U9FNu_cyvs49xh4rzWEauSd4DnRh8qNddJQjCRVeAttuFGwOYRLolOdD4wmcMJf9PW7gGd05n7SF9ECmSUTB3ajSmej1ghRxtBAU1d4rwmNjoktoErI9AIlxdN26GK1SgxMfLHNrvPvXLra7fgrKuqqSfJRuhVlI5B5NmDqy_EaLDgro0KJzQfS2UnVqRX00PKMyYvIJzuOF9P2tit4Inn0w3Hr_XSSsLU4eM3GV2S6ZGhNT-tEPtMxHqA7BM5iykG_Km3iPK7fWPn4ataX6DLv6SkoGawlcDYH6KKj0vIzhFA9Ys-GZoQ2AAAj6biUgrTOnkXmBzddK1fF24DkpAPUpAIZzh8hLmQUiA8RIlrrLPCg0kIXe40lK_f9gi4TIxYGyKjZ51z9i7iS8SYdPqrx26csa5xRslhHHt7GFNQ12JtsSKbnaOLF8jI9cbmSuK6cuMt8yrefYmr4EYV_4m7GhvRFiqzz2eTeDzknh72h8hG4pYAkq-I97hfQvWGpWmEJjE2oD0C80OLv27PUl6HFaHakKtyRFftqoGRzmEv7QhVXKkRP4KWlO7vbNl8vDLIwiHhHbrn_66fHneJi0juvOTvLOBSY3D1_Iqrg7zV57XUuCWqKNr3nyeKU5h7Jo_dn_7vDUSl7EkjKE-KhioG3DnTd7KHMShHNVs7TFo-HZSiWwUR7adjeFuTZErgP-Bny7zvl96SlnGE_EYlsr9Lhb3bWlUjOGVF9id51RiVew1A7BvAjzsUWB_P9Uuxcjw_Wr0_FIrilIHijPEVJqAInGk8gCHMt2LDgu_7iXtLqVm3MzD8W7NN3TpnYeN5rmSxlNtgjRcepy-cZeF6AGELcx3SiSPYX59Xx2b5Y8cGpFpC152v0AcxQSlRoUd6kCSpb-gM6-P-HavylFzf2J6GpVS4UC9M-OfpMDfc_Ht-2oozitoAi7S0RLLgBFuczof9hTNYBd-VoAKBkKhCK_1Kxnbd2ezqazVhnxYOHVLNKQgCvHn49refLugcU_4GCO77f_THLgxxJMbJ5Fuy9k5QJN-0RQZeeOw9dWL2QEBcrQLuZ8bq55qynMyqdyOFad5_HdpIHLtaVmFauRqsP7esBmUdJTaSaShc439WV3IHT6OtUERq2E1jVB21Fc245eEYP8zfcgrftvMYXfNj2OXc2mO_VkbwNARqWywPSQM__gUR5GZKA_X3amAAhxgirKPVIvl44FZ3UkIHJ_NYMUc3fqoteMDT-rCujjotEQ7bMOEVx3vlwk-g_OoI3yNYyQW-PY50.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
                   "format": "openai-responses-v1",
-                  "id": "rs_0f261f8df9e035d4016af5837331d887d1b069c63640e7c3fa",
+                  "id": "rs_07f3aed6a260a57f016b074493e1d487d196312c54b6a2a7e3",
                   "index": 0
                 }
               ]
@@ -2470,9 +2463,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2488,9 +2481,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2506,9 +2499,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2524,9 +2517,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2542,9 +2535,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2560,9 +2553,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2578,45 +2571,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " measure",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2632,45 +2589,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " cards",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2686,9 +2607,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2704,9 +2625,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2722,9 +2643,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2740,9 +2661,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2758,9 +2679,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2776,9 +2697,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2794,9 +2715,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2812,9 +2733,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2830,9 +2751,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2848,9 +2769,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2866,9 +2787,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2884,27 +2805,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " you",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2920,9 +2823,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2938,441 +2841,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " SGD",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " ",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "236",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "400",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ".",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "00",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " and",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " collected",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " SGD",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " ",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "195",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "200",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ".",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "00",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ".\")\n",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "measure",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " =",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " Paragraph",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "(\"",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "In",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "vo",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "iced",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3388,531 +2859,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " use",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " invoice",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " dates",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " and",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " collections",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " use",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " payment",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " dates",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " through",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " ",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "27",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " Oct",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " ",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "202",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "6",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ",",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " so",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " October",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " is",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " incomplete",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": ".\")\n",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "ex",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "planation",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " =",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " Paragraph",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "(\"",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "Some",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " invoices",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3928,16 +2877,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " paid",
+              "content": " **",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3946,16 +2895,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " in",
+              "content": "SG",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3964,16 +2913,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " later",
+              "content": "D",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -3982,16 +2931,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " months",
+              "content": " ",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4000,16 +2949,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": ",",
+              "content": "236",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4018,135 +2967,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " while",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " others",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " remained",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " unpaid",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " or",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " partly",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " paid",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4162,16 +2985,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " particularly",
+              "content": "400",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4180,16 +3003,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " in",
+              "content": ".",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4198,16 +3021,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " September",
+              "content": "00",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4216,9 +3039,27 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "**",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4234,16 +3075,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " October",
+              "content": " collections",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4252,9 +3093,153 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " were",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " SGD",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " ",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "195",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": ",",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "200",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": ".",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "00",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4270,16 +3255,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "cards",
+              "content": "ex",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4288,9 +3273,27 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "planation",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4306,9 +3309,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4324,9 +3327,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4342,16 +3345,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "Open",
+              "content": "Sales",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4360,16 +3363,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " the",
+              "content": " use",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4378,81 +3381,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " monthly",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " chart",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " and",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": " the",
-              "role": "assistant"
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
-        "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4468,9 +3399,27 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " dates",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4486,9 +3435,45 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " collections",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " use",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4504,16 +3489,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " cards",
+              "content": " dates",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4522,16 +3507,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " for",
+              "content": " through",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4540,16 +3525,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " details",
+              "content": " ",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4558,16 +3543,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": ".\")\n",
+              "content": "27",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4576,16 +3561,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "next",
+              "content": " Oct",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4594,16 +3579,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " =",
+              "content": " ",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4612,16 +3597,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " [\"",
+              "content": "202",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4630,16 +3615,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "Which",
+              "content": "6",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4648,9 +3633,171 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": ";",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " some",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " payments",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " came",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " in",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " later",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " months",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " and",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " some",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4666,9 +3813,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4684,9 +3831,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4702,16 +3849,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": "?\",",
+              "content": ".\")\n",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4720,16 +3867,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " \"",
+              "content": "next",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4738,9 +3885,45 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " =",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " [\"",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4756,16 +3939,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " customers",
+              "content": " invoices",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4774,16 +3957,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " paid",
+              "content": " remain",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4792,16 +3975,16 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": " late",
+              "content": " unpaid",
               "role": "assistant"
             },
             "finish_reason": null,
@@ -4810,9 +3993,153 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "?\",",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " \"",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "Which",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " payments",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " came",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " in",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " later",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": " months",
+              "role": "assistant"
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
+        "object": "chat.completion.chunk",
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4828,9 +4155,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4846,9 +4173,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4865,9 +4192,9 @@
         ]
       },
       {
-        "id": "gen-1794474865-Eir7dOQJhYwrU0p8YaYf",
+        "id": "gen-1795638417-8ER2vjkRXa0WZlkuWMUc",
         "object": "chat.completion.chunk",
-        "created": 1794474865,
+        "created": 1795638417,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -4883,24 +4210,24 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 15922,
-          "completion_tokens": 288,
-          "total_tokens": 16210,
-          "cost": 0.01055615,
+          "prompt_tokens": 13121,
+          "completion_tokens": 281,
+          "total_tokens": 13402,
+          "cost": 0.0029567,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 8988,
-            "cache_write_tokens": 6931,
+            "cached_tokens": 12374,
+            "cache_write_tokens": 744,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.01055615,
-            "upstream_inference_prompt_cost": 0.00911615,
-            "upstream_inference_completions_cost": 0.00144
+            "upstream_inference_cost": 0.0029567,
+            "upstream_inference_prompt_cost": 0.0015517,
+            "upstream_inference_completions_cost": 0.001405
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 150,
+            "reasoning_tokens": 180,
             "image_tokens": 0,
             "audio_tokens": 0
           }

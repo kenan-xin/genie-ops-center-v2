@@ -36,7 +36,7 @@
         {
           "role": "tool",
           "tool_call_id": "call_SlidesChangeFix0001",
-          "content": "{\"id\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"title\":\"Collections review\",\"companyName\":\"E2E\",\"figuresAsOf\":\"2026-10-27\",\"contentHash\":\"767306f528295494e5fe60cc37a2c41e85fa2b211a89892f11a32c08978337cd\",\"slides\":[{\"id\":\"s1\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections are on track for October.\"},{\"kind\":\"text\",\"text\":\"Every figure comes from the allocated payments.\"}]},{\"id\":\"s2\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month from July to October.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"fn\":\"sum\",\"field\":\"amountCents\"}]},\"value\":\"collections\",\"dataset\":\"invoices.payments\"}]}}]}]}",
+          "content": "{\"id\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"title\":\"Collections review\",\"companyName\":\"E2E\",\"figuresAsOf\":\"2026-10-27\",\"contentHash\":\"b873138d0eb6ce704f0a137b9e6ccef2be59565ad2587ec51e7d97a3a3c5d053\",\"slides\":[{\"id\":\"s1\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections are on track for October.\"},{\"kind\":\"text\",\"text\":\"Every figure comes from the allocated payments.\"}]},{\"id\":\"s2\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month from July to October.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"fn\":\"sum\",\"field\":\"amountCents\"}]},\"value\":\"collections\",\"dataset\":\"invoices.payments\"}]}}]}]}",
           "name": "slides-read-deck"
         },
         {
@@ -48,7 +48,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"change-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month from July to October, and October passed the target for the year.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}]},\"value\":\"collections\"}],\"title\":\"Collections\",\"type\":\"kpi\"},\"kind\":\"figure\"}]},\"slideId\":\"s2\"}],\"deckId\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"expectedHash\":\"767306f528295494e5fe60cc37a2c41e85fa2b211a89892f11a32c08978337cd\"}"
+                "arguments": "{\"changes\":[{\"op\":\"change-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month from July to October, and October passed the target for the year.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}]},\"value\":\"collections\"}],\"title\":\"Collections\",\"type\":\"kpi\"},\"kind\":\"figure\"}]},\"slideId\":\"s2\"}],\"deckId\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"expectedHash\":\"b873138d0eb6ce704f0a137b9e6ccef2be59565ad2587ec51e7d97a3a3c5d053\"}"
               }
             }
           ]
@@ -4660,7 +4660,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\"deckId\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"expectedHash\":\"767306f528295494e5fe60cc37a2c41e85fa2b211a89892f11a32c08978337cd\",\"changes\":[{\"op\":\"change-slide\",\"slideId\":\"s2\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month, and October passed the yearly target.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"fn\":\"sum\",\"field\":\"amountCents\",\"as\":\"collections\"}]},\"value\":\"collections\"}]}}]}}]}"
+                    "arguments": "{\"deckId\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"expectedHash\":\"b873138d0eb6ce704f0a137b9e6ccef2be59565ad2587ec51e7d97a3a3c5d053\",\"changes\":[{\"op\":\"change-slide\",\"slideId\":\"s2\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections grew every month, and October passed the yearly target.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"dataset\":\"invoices.payments\",\"query\":{\"aggregates\":[{\"fn\":\"sum\",\"field\":\"amountCents\",\"as\":\"collections\"}]},\"value\":\"collections\"}]}}]}}]}"
                   }
                 }
               ]

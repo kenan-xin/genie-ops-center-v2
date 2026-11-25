@@ -212,7 +212,7 @@ export const SLIDES_TITLE_SLIDE_CONTEXT = {
 export const SLIDES_STYLE_MESSAGE =
   "Make the title slide dark blue with white text.";
 
-export const SLIDES_STYLE_BACKGROUND = "#1E3A8A";
+export const SLIDES_STYLE_BACKGROUND = "#102A56";
 
 /**
  * The notes request of S7-45, answered by `slides-notes-1` to `-4`: a read, one
@@ -227,7 +227,7 @@ export const SLIDES_NOTES_TEXT = "Reminder emails started in September.";
 export const SLIDES_OUT_OF_TOOLS_MESSAGE = "Add a video to the title slide.";
 
 export const SLIDES_OUT_OF_TOOLS_ANSWER =
-  "I can add an image to the title slide, but I can’t add a video; would you like to use an image instead?";
+  "I can’t add a video, but I can add an image to the title slide instead.";
 
 /**
  * The message of the refused-and-fixed change. It differs from `SLIDES_CHANGE_MESSAGE`, so its

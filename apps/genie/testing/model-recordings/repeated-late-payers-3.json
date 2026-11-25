@@ -24,18 +24,27 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_jciX7IkRcEJqGkEPsK7OPFQ7",
+              "id": "call_34c410cc879345a9a8f00095951ca2fc",
               "type": "function",
               "function": {
                 "name": "list-datasets",
                 "arguments": "{}"
               }
             }
+          ],
+          "reasoning_details": [
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABrB0RVoW64mcrYqEfaWyx_c8uKJwhY3AI0emRTtA4MXNFLjrCHSHutUuw8nUcHC8_YQwHzpvtIQ4Brh8Sj5J-_t_UifkZMdYPN3DwfI5d0spzhIUVO7-eY6lsQaSnWinQZcAfWP6aurZfFZQ5LtMDEZCUhiFjCuoETO2cp5T-68uX7MGeI-UwE43DSYwqXbLjccWKcgn3S4Dzuk5LlY45Nw1JXUB89R8a3_uvxrNEBbpfpRItEqBZvg15W8UY-KY4XkEGATi_PkmbOyMZk_eaQk_Ef7uF_VAetCplVEZ1JQ2llsOAtVu6C1disTnk_lfLbbpLwP9m5HIIkj2TdCUW-QrVGGByWpqT21GgrAfL0AH6g4ov0YUs2X1To1USHM32ViSLO6DvD444z898Zq8tOX9K3yyDsPHPnLFr29R5m6qhIhHJAbbC57ogfK0vt3K1zr8HLEalCkxEVyzUt8keSAwyD86wqfrgSx2LsgiCNMRApwU9rqijnT2QKZ7kuMKdvXhW7EdPLrogvLFuA65KYcX53GjIQcbJZA0rBEYctlLculmCg8d51Fer5hRdsX6JhuJV7fM2mtQLPSGIvEqNgVNNSek85v31in4VUFCMTG_qVHDmsVwqzvLBgngJlyMw1Fp6-PiWPgv7TZgJGPg9xUii-6dCMWcnDBuh1WsE26tlPRlPPIJ8zeyT-F6dSccT6ekjjwzT2wYDwLg-o8SprWekDhQWog-nZdcfrs1JIj7iPBT6rO-74Tnt8SChf_sAWOXetC2TjOjxYntS0cknp3ZqCwrBT0B4pRbGN3qfWYc8JBDqzoowp96MKtrBgJeOCeCoHTvyrqS3-3s0p_NypIbxwMdaVC9YhD_XaxJI1cKSem1k0-21Q1LpMkq9eGSbGuJQyY-hJt2yxZqBlaYwccJKrwERl9_BF8zQjUD4yv4isSggcXKnQDh65Wstqu8YWVMFWkknGLEq35eHFxYRTcmPLwnRWB-AlkLr9b75pkB-YmT74nJqpyCJCfXN1no8pvHvgMC-UhV_8xFZgr-nQ7s5EYLymSwSmMzGX1dfNXdtwhjgCW1kce7saT3Yxb89RbkynOLVbiRsbAHnmWtT-_jx4ntuwYbXVKMQoAzLADTnu7NrXWODpI6JdH59mNdpGA5UAST69CPFYlTQO-1EkN8iVgZZ37dOHBIkupqmQZqb2Y2DVVeCx-V8uBJkpKpyQ-4mdqXem1pGUGNAFSCOuHokw8yjt2P4009lnSiH9ocwHg_vfooSdRmw82rQZ5OfJY-16FmjnpqqRlIs91yEePxbtuYDhPLouMV5PHGbGp2YDRl2otw6GoneTzMzG0dlEklFD8opzWgRn8b_YJeQfj74o4eJMwrP2hOnhr0gn0bLI8OlHlZgoPvvAtWNatXhrQb6EzRnUVUjFtJX3KpyWFSm_DkfcOuGgTUSgPtzTGU3lcdILGTuTrZQ_QV-qQ5_MYfyQk8LMEVo-1HvO1LsRA8H-ANJG_hoCpNuxkBNpby_94AtxHFGyXYVpnxCbLh11d_q1o5mEMGBtFJlC3ONnK56iX0HyLUmZJA9VWBsWU1yMNTw6_BsA-xvql7KCbJLXXT30D3UCGcEZabKyY2RB7NwMZnW7ajZMbON0AnR4bjoAuE9iZJ-YWEAFsqRJf0DHxt2QTHPkyFWP_Ef-SY41Lk9d3I9xllENTTqNbJShNSbAv_9TDsQ1LTSp1ZTsD0amyssRBuolrtODwdfEF-5KGExz2R7lKBph-HxGxYLJX6ko0HqUgm5DIFpcmxAshlK6UVMtriSzuROP1K8M0cinxL_154w5lUkHeM7WtvaUzLWy8k8HSilXTwjHmctrzY-aeEmDTdO28mkKObUh3izWlnlY9w==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_045f5c02660c81b3016b074454b77087d18fb710e0cff27bbc",
+              "format": "openai-responses-v1",
+              "index": 0
+            }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_jciX7IkRcEJqGkEPsK7OPFQ7",
+          "tool_call_id": "call_34c410cc879345a9a8f00095951ca2fc",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         },
@@ -44,26 +53,26 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_Ool0AmVNYPMrLRQmhgC8PXNs",
+              "id": "call_53781f06f60a418f8368b125909edeb6",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"filters\":[{\"field\":\"paidLateCount\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"name\",\"direction\":\"asc\"}],\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}"
+                "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"filters\":[{\"field\":\"paidLateCount\",\"op\":\"gt\",\"value\":0}],\"limit\":1000,\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}"
               }
             }
           ],
-          "reasoning": "**Reviewing customer query**\n\nI need to query customer rows, but it seems there are limitations with comparison filters. I'll fetch up to 1000 rows for assessment. It's important to consider that the absence of computed comparison filters might limit my ability to refine the data effectively. I wonder what insights I can still gain from this initial set of rows and how I can best present them for evaluation. I'll have to think through my options!",
+          "reasoning": "**Evaluating customer queries**\n\nI realize that I can't directly compare fields using a filter. Instead, I'll need to create a query to fetch all customers where paidLate is greater than zero. Then, I can calculate the needed figures manually. I also need to ensure I have invoices to back up the figures for each customer and include all settled dues. PaidLate will be represented as true or false in the query. I'll get on querying the customer data!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Reviewing customer query**\n\nI need to query customer rows, but it seems there are limitations with comparison filters. I'll fetch up to 1000 rows for assessment. It's important to consider that the absence of computed comparison filters might limit my ability to refine the data effectively. I wonder what insights I can still gain from this initial set of rows and how I can best present them for evaluation. I'll have to think through my options!",
+              "summary": "**Evaluating customer queries**\n\nI realize that I can't directly compare fields using a filter. Instead, I'll need to create a query to fetch all customers where paidLate is greater than zero. Then, I can calculate the needed figures manually. I also need to ensure I have invoices to back up the figures for each customer and include all settled dues. PaidLate will be represented as true or false in the query. I'll get on querying the customer data!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YM-727ySDqXFY-7TWQelJ4n0M8sfvm0z_Bm3mBHzlrRXJVob_lBMILEcIdzQB8p29_TMW6kXtdF3yK4XesmFb_2v0CDN_6uQTRkIueWlHjsPhWGMklz8QVBynKYxZ13ma2r2ZmuHqVA-tY5N6yro5jIgdTk8cnf0o82W7HFayu-jx_OxYAVapOBMn6C4b5bnz0kbAxiOLPtq1SxiK2hMLkiIEv1Ybn5cJsokHRR9NZzu_DtXEFt97t6HQCIGqJ2mj0t6Afj6_hVVXrF9407OheYWSwcaS95IHghG_tVlfvQVGBOLANDpwGCcMGmRnn3dCxHazEogy-Pmh7_PZ5zxkIwHYAGL-sEiXyei0FpViyi-65f3AjNKATi6z3D0Pkd_MeDUnIcZZACMo8uDgNVPMwXtGXzXOaww8eo4thtZKbfAjY3FqDwNoBDoqJc321VTkO2HIpHy_QiIopmZou-VdNDxfwIsYAOof487eArhk4iJ6Hy3zFjOjd-N5QpUyBu1IkPZPUKLASG8rMfnvPZQYGAT18aaUlBKWImUNy4pGJVvW81KtUdxJOscuuYSWclxU4LF3AVDnrvnuFtRambyoy9nx5MPM8s_T3_JnwkImmOjRQ5IBhmV1U0AEMNEa2JJ2f354TagRbqytZkKpZI6OXSx-gjH-3u8-qU1C_LobkSx8lIXzPWW_RtIYmsIEU_Cq2GzmsLQVll38DMGCVvoPs5Sib3zBxwgDzhLHR7_jKDC9SzJ46_hPk93kyaP9V7eEzfNO2R1W5734m1zE9lfWsqbwfQ-Yg47zH6NIgUTm5uSMaX5KI25g03OEnT1ocdhOqm2gCkeePRIdfVaYK1ue27Z4h-IIspicj_2Hrr1VOtZmFBKNnnbrp3y262d15vT47zgbJN3iaS2HUnfh5WOEIPK-o7ff8r4xVGYh-Y30hMzVzh4IV3Fv6LMzE3SW2nsMN6SoSAn9OV6AUZvnwkv0V23aw9bMQhHD9bLrGNLV410I-pPd5ezkZ9qnTRU6La5_0W57TfP5261BG6qssVB5eL8zeW0so1oobfIe6fwGj5dDok6sos-sSrF-yJGfx6hB8jCLacztPwDrX0JhiQrKrFBERje9UXUWNp5guag2KpQHvQCJkRL7RBSRoxMq4yFREVxzhtjcctOWRRqwBJB5evz4kzosGu9OcKuGg7s4QpZ3BF_DcfEloEeuu_z01RA6EGkUXnOFpjJW_P52IR3d00suHkU-uvs-9bn7gMO5NewefM3sPSV4_H29D_bvg_m6R1TkbLBvm67LnM2w5-B0Kzo6LyJsGExBXK4Qz93Fb6oErXDpsvvpRaHerUOYwAbibkJjFwtQYc94jjshNs8r641IRS6RxsgnLuKSruUR0e947nDirxZsqKgNOGAUmdfXTqCeNnhonkTFEtyjUuexd41BDfj5YQS8LZfGjIgPXnluyk3Fx6PSrQXAh0JahmuDJupsjH1Ir2q0Qgs7Gjp3QvWRyT7IkkS5s-nPhuO-SN-F7wzGz0TT9D-hkByttCSznF3YIpo_myrXOVFHi-YmJRRJuSlPDAhW_LcUyfqr0kPd4-yGpFLo3vjXQaSHa9p0D2DxD_Jm2QmONMmt2gvY2XgZl-W-uNyDZOdYEx20mKwJ4bu-aLXW6UOx0flXXDlrlHqCCdTuseU7Uag9JfYASGEfPzTY2u5CtikrYci8JRq-nHJAmLWMmfJb9AEzbDnVNzLRSSa7mW3vDhdYRFUUqGzSYBX8g8OR6pRa9EwQddIYOCunqhesuVi6x0JvDSUEyAxn8bRevRkr5Z5r1t4PZyP9Yb5FJN4GX_OAzS4cGHDML89U4Z-Q4ddIp_ZYbaedUTUFE4uG-7nWL_ow9-YI3Azs09d0PTxedt1BQ_IiABxZYwBC5Wu8EZ8SkHGiyuqnyUeLbzRlTxmMPPLW7Zic--adzxVPQotCPnq8Fb9UapbG5NT2PyyxVtExOmqbG33iLnoZ4XSV8IZyvpXUraGMu1abSLK6hPx4v2PkrvbqwG51PxAKtj3xm99zO5MO-LfUYMk5uMJBcnpCwDsMrM9i8tug==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_047839753642a528016af5833d024087d1b711183ab28b09a3",
+              "data": "gAAAAABrB0RZoSAYl4HbtVdKd57W_mUAQ7fC7Vy0h8z7FqXCGPNswd5F4M8vfWWUSmBqlg9o7eP0Herr6DgCplM810gPZgGQaTfpftw-0_nXJUt6nt9zQAhc8qgqDlO-6gD3wMxkgzZ5P4ey2xvrxYl6L8W-X82i5lAP_CpjuKbyxvv4ZCRA5Ue86-7fudrEYCHVb3Rhr0fItiNl-2i96bknfq18J3ZbxYFfh4fpDQfUtmEllG0peANykmo7QTjQR4NcQH6q7mySb1decaGI-TYufFBovXtn-UU3RgsAr01SshtuNMUz9DmRHFp2C5M9h0HSXfwoKpHdQXNs6o1Wfmuv8nUKwY-FN5jVvZMQ_y53XpDBBgUey4AoSoumUxGRcJejIZQ-VXOU5pTfWIvjVbJrPM4gpKNb7qNM6NdbF4PhAf6E6JzXpGGJjHL_awm1_vDCnedyRKXas7iqoYOXQFUK8njx3vy-t4V-hClDaSJ6-q5cHcbgQ8bfjqLRMyyh9TBQ6PutkT-Y3dnUoWfhJ93FWiD9Y56FjnmS2iwUiHBvspu5BXWYvLchu0DuofosDG4LXOnHDf2kiiNxobcHks8zjUaOnFE5_xj2Kf0HOsbfmOeaGUc9mZtG_IHfe1rDBR_S0EqNVlhs0ag6bKRcaXppHhrbGsbj76EzAupu0nNPEEWTFtj3pLlDCOvQ6OrW3VW5Mz08zmMYtlSAH8JYSNSP4oSNPTKgW0GgDyinVHrYfFQODhzbbJFkqh_AJXV3UdWjg35WKwuhfek5KnFQwswdEaQO5AxzDTKM-X8RFLsXXY50W5uosIx1ItLvToDiaqBJOgsyXbqIvOYiuEc7ErsUab-Zcdg-6G-rLM0JL9vudYoNuuY4gmuoOD7UWt1cPvfm2NobMfnVw69mpiw68Nz2zgJYdRCGC_AE44lEW6W8lHQ4niNFLWS2r4DZs5qknWzc9UE19vBIHDYApeuFlFNZZZt5T89kRYdHSETLs-AIFoCKme1_mFF_wzeOlxvCqH8feflKR6QWXCRWLyxBr_lCa9zCqQN58dgnuq8I-cXp56W679LnMTmKTO24fgKgXKo5Dr6DmP3zgIEYOgaU4dMA9lsCOqupyINwPt6iN-QCSeNjyrm_AxtIcwGZj1xfV1xomyavYWp1Thysx3G-0RqAfo2pCt_W7jVgJIaFC-7QE49cgnCqX-BlAvvt1oBwgBthYVWf9RG56xvd8da-XFKP7y-0mtMKHdmBaHOQtnC_VidbcLJrnFimFJem91FOJLbymLI0HP3zCj1FVK4RRzAJ0CH0z5IuJTeHGgJu__tfVFabPTPYKBlJqjw6qINJGqDSD7cObJQOS-lsWurltFokkn7l4tiwH32ZOsgtrpWrttGHDslHwqjMLccZbNyerYjU3aslwR_t8uQtiqfgE-SRMhgl-C_X-FCP-LISFczZ8RRzytlkMI-bR_4Y96Luq8ucpqHGUAcorJKqZ8gaYeDp8fq2XpmkeLUZWMDmjPZOolyi0ez8waEDp5f8WLOIQ73IbVgGOV6BS27uS6zD8jmU8tuUamI57mvRJHF5hpD4wTxUfWSgiFbnH0sraoE4K-HIwyIBMXjH12y92GcJgzHtX-FLqSgUxsWU-THT6B5aPeMGVFXg9mNdCiKTd7ogzyh46Mn5ONnRHxAKZrEfnCnKuY5a-kW06H1oXqzM_UQcPUPAx02DUcQg7YmX5vbWYYO4VywfvGuMBXY3cuzAiHjwS_4tb8ihJ2VFPYKlji4uVppThhMqRubRFMpvAntwdNbd7Nf7LfEvo7vWqKxaj7XJ6OqUTKW9cn_2ccOvDtcMm7qUboJh4rUXIVA_TicF34Bd_7JV4CDbKOt5djt0uOq27VgY9EisvzKLBhVLvn3u2KZ-ZGHu1Os9PjKG09YClOEK-qR5TAlSbBsqnjPGrtezStzoGEUN2oOv0PKjba0FBXR51kMjGSQiWDn2_JCUwRLCg5ZuFobrFYyNlMvVdZ0dUxwcwjQRdp4XbX4BPJyT92dPwlTcsaL0KTIB_x0USo9LGeimq0ojhP3G2-GHIc1GsRTxT-2FRv_MHwtmTSEudJQ-ZKTnleqwadgGvr2z1_1JFAMNv7aJxcPayTf_gjs6FZS0Lo1oYjrJz9_XcVEiaXCswlSW7WmRzt6QMSK_vVmEj3TlLIbd7j15YyX5a4P7ncn9IztSj158WETpkhu9SqDkbGAI-vohiDhX5EvU9tHW4wOFLqU90r47YpnlPeprnWR3weLdvZRZP8cWFZOUSg-jrl3TywqRpfoQ-twkJvB5b91RakSZJTd9ln6vEaMpPI0_85PXLgfRHadaa1nzTjgjftF8M0eZJfCxK1ktdFi29UBbIhRRRRvmhPJ-kfrclaAwgMuTbGGcO5sgrwpgDbfQb-CqjKlLW3utyp33JQvC8lTJQRQsmkeYETeHyxThFGK4tMeOqtYH8typuly-AW_Ks-Q4NrBf82YJQGULjrVYCm3sBfqgQh9-lXw6kMuLDnJfisw3tQ==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_045f5c02660c81b3016b074456ea1c87d183184dcc77792913",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -71,8 +80,8 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_Ool0AmVNYPMrLRQmhgC8PXNs",
-          "content": "{\"dataset\":\"invoices.customers\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"name\",\"type\":\"text\"},{\"name\":\"paidLateCount\",\"type\":\"number\"},{\"name\":\"settledWithDueDateCount\",\"type\":\"number\"}],\"rows\":[{\"id\":\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"name\":\"ABC Trading\",\"paidLateCount\":4,\"settledWithDueDateCount\":5},{\"id\":\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"name\":\"Harbor Foods\",\"paidLateCount\":4,\"settledWithDueDateCount\":4},{\"id\":\"3fe89542-9981-4644-85e7-87be1df18f87\",\"name\":\"Meridian Labs\",\"paidLateCount\":2,\"settledWithDueDateCount\":5},{\"id\":\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\",\"name\":\"Orchid Retail\",\"paidLateCount\":3,\"settledWithDueDateCount\":3}],\"truncated\":false}",
+          "tool_call_id": "call_53781f06f60a418f8368b125909edeb6",
+          "content": "{\"dataset\":\"invoices.customers\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"name\",\"type\":\"text\"},{\"name\":\"paidLateCount\",\"type\":\"number\"},{\"name\":\"settledWithDueDateCount\",\"type\":\"number\"}],\"rows\":[{\"id\":\"3fe89542-9981-4644-85e7-87be1df18f87\",\"name\":\"Meridian Labs\",\"paidLateCount\":2,\"settledWithDueDateCount\":5},{\"id\":\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"name\":\"Harbor Foods\",\"paidLateCount\":4,\"settledWithDueDateCount\":4},{\"id\":\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\",\"name\":\"Orchid Retail\",\"paidLateCount\":3,\"settledWithDueDateCount\":3},{\"id\":\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"name\":\"ABC Trading\",\"paidLateCount\":4,\"settledWithDueDateCount\":5}],\"truncated\":false}",
           "name": "query-dataset"
         }
       ],
@@ -2299,9 +2308,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2310,11 +2319,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": "**Organizing customer data**\n\nI",
+              "reasoning": "**Clarifying database requirements**\n\nI",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": "**Organizing customer data**\n\nI",
+                  "summary": "**Clarifying database requirements**\n\nI",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -2326,9 +2335,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2353,9 +2362,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2380,9 +2389,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2391,11 +2400,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " create",
+              "reasoning": " qualify",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " create",
+                  "summary": " qualify",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -2407,9 +2416,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2418,11 +2427,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " a",
+              "reasoning": " by",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " a",
+                  "summary": " by",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -2434,144 +2443,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " table",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " table",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " to",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " to",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " group",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " group",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " customer",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " customer",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " counts",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " counts",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2596,90 +2470,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " selected",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " selected",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " IDs",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " IDs",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " from",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " from",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2704,9 +2497,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2731,225 +2524,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " dataset",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " dataset",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " and",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " and",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " relate",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " relate",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " it",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " it",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " to",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " to",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " the",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " the",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " figure",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " figure",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " invoice",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " invoice",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2974,1332 +2551,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " based",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " based",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " on",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " on",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " settled",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " settled",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " records",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " records",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ".",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ".",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " I",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " I",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": "’ll",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": "’ll",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " first",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " first",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " count",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " count",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " the",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " the",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " selected",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " selected",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " IDs",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " IDs",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " —",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " —",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " the",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " the",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " computed",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " computed",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " counts",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " counts",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " must",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " must",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " come",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " come",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " from",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " from",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " the",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " the",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " tool",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " tool",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " results",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " results",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ".",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ".",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " Running",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " Running",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " invoice",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " invoice",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " query",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " query",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " counts",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " counts",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " in",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " in",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " parallel",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " parallel",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " could",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " could",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " work",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " work",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ",",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ",",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " informing",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " informing",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " my",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " my",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " customer",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " customer",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " count",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " count",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " while",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " while",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " creating",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " creating",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " tables",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " tables",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ".",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ".",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " I",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " I",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " should",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " should",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " select",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " select",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " the",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " the",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " customer",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " customer",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " ID",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " ID",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ",",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ",",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " name",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " name",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": ",",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": ",",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4324,9 +2578,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4335,11 +2589,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " count",
+              "reasoning": " the",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " count",
+                  "summary": " the",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4351,9 +2605,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4362,11 +2616,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " fields",
+              "reasoning": " invoice",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " fields",
+                  "summary": " invoice",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4378,9 +2632,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4389,11 +2643,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " while",
+              "reasoning": " records",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " while",
+                  "summary": " records",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4405,9 +2659,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4416,11 +2670,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " filtering",
+              "reasoning": " table",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " filtering",
+                  "summary": " table",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4432,171 +2686,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " based",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " based",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " on",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " on",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " whether",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " whether",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " payments",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " payments",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " were",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " were",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": "",
-              "role": "assistant",
-              "reasoning": " late",
-              "reasoning_details": [
-                {
-                  "type": "reasoning.summary",
-                  "summary": " late",
-                  "format": "openai-responses-v1",
-                  "index": 0
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4621,9 +2713,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4632,11 +2724,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " I",
+              "reasoning": " The",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " I",
+                  "summary": " The",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4648,9 +2740,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4659,11 +2751,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": "’ll",
+              "reasoning": " customer",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": "’ll",
+                  "summary": " customer",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4675,9 +2767,63 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " table",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " table",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " doesn't",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " doesn't",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4702,9 +2848,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4713,11 +2859,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " to",
+              "reasoning": " a",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " to",
+                  "summary": " a",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4729,9 +2875,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4740,11 +2886,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " handle",
+              "reasoning": " summary",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " handle",
+                  "summary": " summary",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4756,9 +2902,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4767,11 +2913,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " both",
+              "reasoning": ",",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " both",
+                  "summary": ",",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4783,9 +2929,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4794,11 +2940,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " queries",
+              "reasoning": " but",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " queries",
+                  "summary": " but",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4810,9 +2956,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4821,11 +2967,11 @@
             "delta": {
               "content": "",
               "role": "assistant",
-              "reasoning": " simultaneously",
+              "reasoning": " the",
               "reasoning_details": [
                 {
                   "type": "reasoning.summary",
-                  "summary": " simultaneously",
+                  "summary": " the",
                   "format": "openai-responses-v1",
                   "index": 0
                 }
@@ -4837,9 +2983,279 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " invoice",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " invoice",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " should",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " should",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " include",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " include",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " a",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " a",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " summary",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " summary",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " with",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " with",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " outstanding",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " outstanding",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " money",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " money",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " and",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " and",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " currency",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " currency",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4864,9 +3280,1251 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " For",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " For",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " qualifying",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " qualifying",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ",",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ",",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " I",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " I",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " need",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " need",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " to",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " to",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " count",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " count",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " records",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " records",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " to",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " to",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " get",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " get",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " the",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " the",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " figure",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " figure",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " of",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " of",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " 3",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " 3",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ",",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ",",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " so",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " so",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " I'll",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " I'll",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " call",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " call",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " a",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " a",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " filtered",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " filtered",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " count",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " count",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " query",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " query",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ".",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ".",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " I",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " I",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " might",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " might",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " check",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " check",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " the",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " the",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " invoice",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " invoice",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " count",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " count",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ",",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ",",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " but",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " but",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " it",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " it",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": "’s",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": "’s",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " not",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " not",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " absolutely",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " absolutely",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " necessary",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " necessary",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ".",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ".",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " I",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " I",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " could",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " could",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " process",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " process",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " these",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " these",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " in",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " in",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " parallel",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " parallel",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " for",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " for",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": " efficiency",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": " efficiency",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": ".",
+              "reasoning_details": [
+                {
+                  "type": "reasoning.summary",
+                  "summary": ".",
+                  "format": "openai-responses-v1",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4879,9 +4537,9 @@
               "reasoning_details": [
                 {
                   "type": "reasoning.encrypted",
-                  "data": "gAAAAABq9YNHgWXGTJOZaSmB3e4Lp3TOhzflbA2wVwAm7ACQ6ZaOs-MBZWJjJHk2kB0Umm_Hd9cWTdgQ5KNdmoNTC56k_e__op2xM-Sf5fqgZxtMdmLAO4En7xXFIr-MwGCrdoBBV7B-zVXM5OFjwg1zbVu959R9k0MXMM3mgmn6tq7smlp76KYWycL5acOux8tYtUMFaEumAhJTYv-bHGtLFdWu5kjQT2ppHDykxXCA5-xWDpY4UOsRP9LeeS0-CDDA12zfPxIJk7Moy0ISexyd9mpx0hfM5tyn9liotWTnfbxBCMOUNpmI3N9Sq1cKwkRvS5cfCV2lC0IT3VZFx9NS2uIhYrM5GMi00CTPfrfXHs_fM6B4GUymCD8phEfJGkxPlvNh9Ywn4qwFh1qlHYTd5Pv53ARstlizyYhM6hZQJjjOHCrTVa1eSxE7ki9xHsnyNKSdBOsOZQxKRoSGQi_9pp_nXXaW9kkCh6C1bB-A9DvPOi4YH-xXHvcxVIrJIkSoBKcWMr5BG36bJerB7qDXqO7-qM_BeHLWlZcZq7NiQDUrIeKhIY0p7S7NA3LawGWh_JxdTmt42CnVGAUTnjfZS7XMn1tLdCxgU-lpjHP3sq83RQaqfnH65YebJPC5Qp_FEzK4vJe9PUFGUnvk1UyIegtSNTwz75v1qEjCm_wuWK8u_7Rrvp7esTNLmZ6ewpaD421DNP0fLBwDnYo-JsQglKMqOqU7NQJ_50BRZHypgVObcGxdRyRbqC1vqwzWpIo7rS2dm50Gv8CsiHzL8kuTJCMgp1Q0hEZgeMBC6j5tBeX76EL5j7RNGI5WpaoubXSSVJDt7Xzb5WTKCdaLkTcVTK5hdUHIpHcc5nrav3IeuzOv5sTGNa5ZVWwKX0r_kOIBCMVGwyN9z9y6XYw3F1VHVYlFBI1myS0J3Sj-Y2XPNVqWHtZzCvM1c8C6KDS2ILDznYSoG2VLnV3gk6yuymQCOoxgwrmo5WpeXtKo_nU5lULOdcuEY7SxzhRHkWiv9iZPb9LKx_XAwmjdjSu8gXN3RWEGEVi1JrvSgak7XJGn88Yc5T-JMxQwYNOa9FrDLvP-5aIDxKU0jODj0SrSQO5g398pO9J15Js-r6fM9hBcIpBHwSI07nhqjvdg47h2ecFMSf5TWh17gyceOo38C_FKIlRwhh0P5WXB8uxCfGZaN6E9owlpg-Sq6NB0dMd2K98KHMydb6cnkYIWuyu0tTmBNeUPWGqhQKytcptdAIZccDqqimTvwOqR05X0CEnvitG6CYP9gOZpg-0m1UjnmDSSiH1vp_Hu5FwsDzVyZzsFqDgBd3u6AWHDL1v09EbY7EONLkb07Z7omVkHoSDGwnP2KchhDrQGyQv3-M-YSkhNvtO68RtuOM66moBJDSraIEj0vw1N0TjPNUwtY0V9g_tu6Eq3yCS2CXX9hqTp989-7zq9RU1wJI-4Knvpkd3gsqz9GuPbueO1-6_jaZiv2qbwIwAWrdMlwuyEWwirnAOgP_2xjyP6CLp4hAZagTe3ZytGIpb0XNFg9KXl4835Y6REeRHTx522_EhNw3_l9dZFJiQS8W8M64OYkm9C0jjutBmTNMu5rJLBX4fLLN9jwIKPaqYIWWYzmCIGa25hsCffTXU62yt2-oibkn6EUZrC-NX4ZoE8EhewenyO2hdhMI4QrJ3eSsqPpWJYr3gApEZVIPBXR5NxokkQocunWb_XPeqGLJUGMYWmDPTdGLIDRFdy5VU_4IetPSqvM761hwIOzRQS0tjDGsRv2oycxRitjV7nNazt7T_rj4D0pFqsJ9HuG-PEddRNOjQVOLARzcLwU1Oc8-jS3SisE4lx82BKK-s50zFYZkWFUf9dSJ56q6zToPEVEL0wN3CRmPJJm1tTnO2KKpF4X5Q-AjQXgICVPvj3jX8AVTpxGHKtNf8-iA7wPU0hTgWp7e4dwngYZ6q8qZdDvhtKllAvCRM58x__YvG6S48Zgk4aYarjp-JxzalSeRY4oRrS4132q7H0eSUJE2SpO_bvI6TIH0DDTnYHPgn6oLLdlvWMsfj-jte42ZeJHv4auqOlipGEcL68MXoCb42F8Xij2Dh58NifjGojCBKOQZuDkNb_WBeSZPzBtg6cTQO_82KavX-5kZ7cRIzvHrqvQYDv5xUXPNZAuJHlIHCIiU7tuU-E_Bi9zNpiK8ygWVf9xv0p-11AaAd8wLyGvx1UQaZ0B5WNS5RE0J21Y_i7R46oZ2lRFn_N5mnDMs9-14AuZg2lpWPFa7DXaR9wIRGWCvBMUYR-g1GR9Aytm_eY_Ou3d2unuXeep9hvv0G9zgds3mWT4bAH8A57nHmag_ss5j_Vvc8wbNrrVTGDgpEZlAH5jwfWA9I39qZjP3eIvdYuOYG2GJjPgB7YC1ZQX9-h3Vy4HV6jpeWHhdfcFETMG8ojppq-yCxnkg4F0Tf4Dt2eoBhgJaWwDwPJ6N76UVGCJ3Idj7Pjg95dnhA9Jh2GuXGuASMUgLMsL6pJ7hH7UTs_qtU1BkWVsAqJhqbQD9Nz_zo8JBoH1_tV8GQZJf2PKby64FnMQALpIJO59wLE8gshqzsjHZQkjiiBQVL_m4K6d9UZyuIo-8_5rLYVRw_8xRvzEPAbiJZTJdcrPECXA7e9LkGHWIPvv141LkmBTZkDOmrSTqs3ICdcyycwJZZC2yUm8MVrZ0jTXE2YbIkIEwxQVg6rfKvLKXHVlOmCgYxclFzzDhStPCC4X0HYZDfOBX6_Uf_NM7gVmg-7kIrbY_4bkMIwotA7VpQloLgx1o_KsUenDDGpRYh83VPnv2XECqJFSbGizi2aledueZ0_56iRcnWSq91uYczSaTBeh13zJ20GXDvTnDOLZgL92l9tGyPYqd7Q2tP3KnwZ2PCUST7PBPbqW_teZ6u84MEJ-I4BY8QoBAzM78oXm2NeWrVKyMmFHxLfspy57DSJgxnURuXdG8lCqhYPrwcvJ7NBl1hUiEWEqS-Mw3h-9NHXa3KWWTgxuTunKticz-jIaeyg_n5BncoMJrqwoPXNzhIkvJs0yXNzkThhuKfN7nN0NdbHlDB9sL8I54GpMarzibn5BBz-xrHRWAL6Qq5fcEgrCuSZpX8jidqyWjc3pJCJC3dJTv7D3baVoWCSrogADU_jyQGzANFKEUfQJ9Etd1pf1YVdiEPvM5bCNkv_S8J3cPHtAtXXh-P35ASm9YWUTgBJpDve0g3pH1uj4RY26-bemNuvGzU4_BdVMREKx6BbdARCIV2ljU2kZiFK_zp0BY-kwBFG6hlTpwD-NQ946lrGJW_hVejAsjY-3ggmLaEjH5gYmOXDAYH9.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                  "data": "gAAAAABrB0Re8gofFMt4yr5F_5QoVvSA7ykkKN8dWoSlsu-uZng7rVBYzJdtAeFbSIcuxzXc1ruJdiR6vdFX7I3_Ad_X_Mhv9sQu9F8eiA3LQCvOYoEPNBepB4moeoUDzS8JWojC1uZHmZ10-RRd9IM5FazqsYNdznnnN7YuMklKc0-9Wbr3gJZIRhe4RbNL8qdDjJc2GG31_RxJnQ9o1AxTEihhT6nJZBXvkHgkobUiiivLcrthhC6b65zK1juDAYcfUCA_xCkGPY4gUj1vBslv3FVLMrAGg-DLAGVfSctNBm44rWTtcBtxrtKeiOYDtGm4Gb1hcrPSHz5hKboziCetzIeJF3RCg6GP_07Jy7NEe22hxemBZJcfLTcncb7Lwdy6tZl--kSzOYc0hRVF_bDlKejBRRJga8QRVA7FdTHcjWhxzh5SnJCeCZZfhgc8n3-IRgoq4TNKJTj4gDAyZXl03TU3TTklJwW929Z0-IEBZJ1ZF17abcGVjwI2Wf2RphROdALA06KphkRPJL6XHJeHdONktF_C-cCO1qWWJKDvoMniVnYNiDysGq2b7dk3mc9KdWmiwAxtgG0Dl6y7aln9NMLZqRHTVM-OVMArGIZrLPS_0MlUVvauus1oQVpldKsHX7El_xd81DG52WXNvCa-yPfv0RcEgtboAdeli_HiDunM34pqPnPtX5fibNQtXSsL62ZIdzg1NXbT6gtYvWuj6cCbIDG2xoOU09PsOk-8BOlrag4LnkM75IS5D0uIoTSKeIbMYgqgaB9wTDhuKmaoO0ztKPBzD5cYUU6hmtnPRjDUsSNF7HQcLFtWNGa7DCWFWlSTw9czXzy54baePsXHEL2KTbXNB2JgDTXQX7RAGgom44lWeVGeOqKSCClUUbzWaM22Y3IKRWKsuvPWSTKR6BFK26qy_8KgHCB6NNT6m6PBQMWFNCnTG16fAvW7SK6iwHH_0y20WcqtIkSzHfABG9cT_9i9xCtc7Qi9vnHENowu9DbMSJ4d1m4qG87pfRznb47Ew31fKXL81K91fGtUz4lSf6Ir8Gerxn6gRo3wMD-g2Sl_BCDBMcudP_gmywpQYMgf1x88kwO93n9Z3aJt9gf6yEdyv5LbK9J1gkZ27pphCaTBCe70sCou_uDwc-ZwGVD2uEdn5jQ6QTs9Dr3mu9x3rXm0eMMU9bmWP0eIxF7FQU2f3jZUx2BSzmXrqRLIcuKxezjAH7pR6nyQk85HaRZnTLXhEpsnLvX21trKJY17waOpiHn72NOAkn-9YHvb2oajkTgwnSdHHUD-W5shxfFhvom_RRWNycK1V7Tt5Fg3d9QHHC1G_ngQXVnLN7VC1mfWNWxAnkfmWdAi9bY7__OzQ1i6gO14iwEKAIERwcecBqBz8JKoeNdnRjTNEJLPdBF9dNQ5pWqWeFjxo50c1W9Ip9t1HQ1nWTSeADZOj6iB4ZHJz8oy53Jj2TCXHxuvcQtnC489-pSxiQQwuM1O-wQh9-7nUiLVLDtcL4yDDSmHkd2d_j0UUWrFKZ4I4zcqO2O8dz74jfATE9i3b7vbWIgcqFWtqptam8qNS7OOFfag9eLKrxHF7eNz_kGKRhLdeT-sGhfrykXMRAp6l7OnhV6yeUucvHYLvu17rMGHkM_-m1a-16C_kz55Hhi5BzUjWLdFMp46FrETNwzMuBouuETi7IZPvMhE9WZnD2wIqO6Z8-pFCyE9Lkdd_LWW8PXffCKxj_nmPVzRGpYgLz82-9DWgxXC794ZHZoHm7y2SqLlLiP7CbV04zfsdlWv2ULokgKe14bD96n5DI_LqMKXhFfLpPc5JLR9njVAHqqgzICoe231t_jHLSfWT2QePpseg4xrfuMXVBQi5VGb-pxwqP9C1SgMaJgBH-5tqanKIzulYyjj7fOpX4RBJ1CoJXT4Mi_6Gncrq7xeGBUNbdIWDZqdDEt1jMb8sba4-kfv49H5b-z3JhgWEJtThj4enzDhO_EOjSQwn2L6NoIaqPm51GAkj-yW9UCWpVM5l52JdJPO6taSsmm_fpLoh6Bcpv9gUevoWVR3i5Y4KzkSvwrEq1BB0cTYuD-e0XnOLtP293UoqCc7tbkXbLAn14OjIOif7u58gGWzRhp132Nu8SBiux-Q3g9dFdmqVZwLhFDbkjL2KXd_Oxa42eS3xU95i-DujPBI88bxujVXUm12SnagvzSHOqV4Q-dlIXlnIriIXWwpL3yyK15Y3fa2iOZWo84XpyP2waaraHhi6RsosNB5ZbRoTkFkSY9CxxRm6P14ZjRvfMK9MKxzf30NEAFUa7Y_CHK3B8UpcVQgDbu-F5vZeBGySOYWIn7GEGG9i4rXCM92m5d53WzjoHpR44DDeP278LDFqTdfoXxdfeKtwva7C42OJCl9wu0V1wKQ58w4E2cJYWlIT2jIeK6USzHXGMki6W7t-0VTlG_rUpffUX1GskesRnD-iUrFPbvubyNIKi_2egNNphj_dU0V5SBBYJXqzxpLdj3-HtysWzL9GSfWCIN9alMr37RUmsbr6kKvPe5prFNUjkGM7sA9TS2-j00cbWG8rLto3oL0N1SQAKZIH95h6egQRjD4U5yTtrk73xNTDrpsY3WH0dSJzibLvk6Gp69_KEmPNdvI1SgiF9m1CKAlOGcVMd7mXiXtC0TBe2xQ871BAJY-6od87Y1RYVotxx9lzNgjIo4IITx3oon-_HaRV8FiLtgobsr1fnQUCoEQEqAqhhwnbL2WpBLOcsSNDN_PYdqiXJYE7qgkgpSeXmfHrtJ5wA==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
                   "format": "openai-responses-v1",
-                  "id": "rs_047839753642a528016af58340f49887d19bfd89b1df169f0d",
+                  "id": "rs_045f5c02660c81b3016b07445bfc3087d1be09fe7d44658f3f",
                   "index": 1
                 }
               ]
@@ -4892,9 +4550,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4906,7 +4564,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_3M9ol1Be2xkFuqizOJuB77gz",
+                  "id": "call_4cd103b2fe32421381423081e5447d99",
                   "type": "function",
                   "function": {
                     "name": "query-dataset",
@@ -4921,9 +4579,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4947,9 +4605,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4962,7 +4620,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"filters\":[{\"field\":\"id\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]}],\"aggregates\":[{\"fn\":\"count\",\"as\":\"customers\"}]}}"
+                    "arguments": "{\"dataset\": \"invoices.customers\", \"query\": {\"filters\": [{\"field\": \"id\", \"op\": \"in\", \"values\": [\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\", \"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\", \"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\"]}], \"aggregates\": [{\"fn\": \"count\", \"as\": \"customers\"}]}}"
                   }
                 }
               ]
@@ -4973,9 +4631,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4987,7 +4645,88 @@
               "tool_calls": [
                 {
                   "index": 1,
-                  "id": "call_hmaOJxD7L7AMFCQI0szdhJX3",
+                  "id": "call_386c8f1a78134ca3834dc1281c1e7150",
+                  "type": "function",
+                  "function": {
+                    "name": "query-dataset",
+                    "arguments": ""
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 1,
+                  "function": {
+                    "arguments": ""
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 1,
+                  "function": {
+                    "arguments": "{\"dataset\": \"invoices.invoices\", \"query\": {\"select\": [\"id\", \"invoiceNumber\", \"customerName\", \"outstandingCents\", \"dueDate\", \"settledOn\", \"paidLate\", \"currency\"], \"filters\": [{\"field\": \"customerId\", \"op\": \"in\", \"values\": [\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\", \"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\", \"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\"]}, {\"field\": \"paidLate\", \"op\": \"in\", \"values\": [true, false]}]}}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 2,
+                  "id": "call_40cd1bc5d35f442f8ae4a354b8da3764",
                   "type": "function",
                   "function": {
                     "name": "make-artifact",
@@ -5002,9 +4741,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -5015,7 +4754,7 @@
               "role": "assistant",
               "tool_calls": [
                 {
-                  "index": 1,
+                  "index": 2,
                   "function": {
                     "arguments": ""
                   }
@@ -5028,35 +4767,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
-        "model": "openai/gpt-6.1-terra",
-        "provider": "OpenAI",
-        "choices": [
-          {
-            "index": 0,
-            "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 1,
-                  "function": {
-                    "arguments": "{\"config\":{\"type\":\"table\",\"title\":\"Customers who repeatedly pay late\",\"series\":[{\"name\":\"Customers\",\"dataset\":\"invoices.customers\",\"query\":{\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"],\"filters\":[{\"field\":\"id\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]}],\"orderBy\":[{\"column\":\"name\",\"direction\":\"asc\"}]}}]}}"
-                  }
-                }
-              ]
-            },
-            "finish_reason": null,
-            "native_finish_reason": null
-          }
-        ]
-      },
-      {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
-        "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -5068,7 +4781,33 @@
               "tool_calls": [
                 {
                   "index": 2,
-                  "id": "call_iYH4YtJDeI3Kg8J1svT7pEe2",
+                  "function": {
+                    "arguments": "{\"config\": {\"type\": \"table\", \"title\": \"Customers who repeatedly pay late\", \"series\": [{\"name\": \"Customers\", \"dataset\": \"invoices.customers\", \"query\": {\"select\": [\"id\", \"name\", \"paidLateCount\", \"settledWithDueDateCount\"], \"filters\": [{\"field\": \"id\", \"op\": \"in\", \"values\": [\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\", \"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\", \"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\"]}], \"orderBy\": [{\"column\": \"name\", \"direction\": \"asc\"}]}}]}}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
+        "object": "chat.completion.chunk",
+        "created": 1795638361,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": null,
+              "role": "assistant",
+              "tool_calls": [
+                {
+                  "index": 3,
+                  "id": "call_10d7af93cf2a43e788a071d3781dcc00",
                   "type": "function",
                   "function": {
                     "name": "make-artifact",
@@ -5083,9 +4822,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -5096,7 +4835,7 @@
               "role": "assistant",
               "tool_calls": [
                 {
-                  "index": 2,
+                  "index": 3,
                   "function": {
                     "arguments": ""
                   }
@@ -5109,9 +4848,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -5122,9 +4861,9 @@
               "role": "assistant",
               "tool_calls": [
                 {
-                  "index": 2,
+                  "index": 3,
                   "function": {
-                    "arguments": "{\"config\":{\"type\":\"table\",\"title\":\"Settled invoices behind the late-payment counts\",\"series\":[{\"name\":\"Invoices\",\"dataset\":\"invoices.invoices\",\"query\":{\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"dueDate\",\"settledOn\",\"paidLate\",\"currency\"],\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"paidLate\",\"op\":\"in\",\"values\":[true,false]}],\"orderBy\":[{\"column\":\"customerName\",\"direction\":\"asc\"}]}}]}}"
+                    "arguments": "{\"config\": {\"type\": \"table\", \"title\": \"Settled invoices behind the counts\", \"series\": [{\"name\": \"Invoices\", \"dataset\": \"invoices.invoices\", \"query\": {\"select\": [\"id\", \"invoiceNumber\", \"customerName\", \"outstandingCents\", \"dueDate\", \"settledOn\", \"paidLate\", \"currency\"], \"filters\": [{\"field\": \"customerId\", \"op\": \"in\", \"values\": [\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\", \"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\", \"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\"]}, {\"field\": \"paidLate\", \"op\": \"in\", \"values\": [true, false]}], \"orderBy\": [{\"column\": \"customerName\", \"direction\": \"asc\"}]}}]}}"
                   }
                 }
               ]
@@ -5135,9 +4874,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -5154,9 +4893,9 @@
         ]
       },
       {
-        "id": "gen-1794474815-pH9WdgxGuTMm1UnIW8w3",
+        "id": "gen-1795638361-VkUg5ZEGXUfRiuIMQW0E",
         "object": "chat.completion.chunk",
-        "created": 1794474815,
+        "created": 1795638361,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -5172,24 +4911,24 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 8094,
-          "completion_tokens": 621,
-          "total_tokens": 8715,
-          "cost": 0.00395535,
+          "prompt_tokens": 8170,
+          "completion_tokens": 734,
+          "total_tokens": 8904,
+          "cost": 0.00455535,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 7722,
-            "cache_write_tokens": 369,
+            "cached_tokens": 7772,
+            "cache_write_tokens": 395,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.00395535,
-            "upstream_inference_prompt_cost": 0.00085035,
-            "upstream_inference_completions_cost": 0.003105
+            "upstream_inference_cost": 0.00455535,
+            "upstream_inference_prompt_cost": 0.00088535,
+            "upstream_inference_completions_cost": 0.00367
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 112,
+            "reasoning_tokens": 72,
             "image_tokens": 0,
             "audio_tokens": 0
           }

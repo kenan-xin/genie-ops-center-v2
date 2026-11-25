@@ -24,7 +24,7 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_9Sd6AUb4MVBQj9nSyDXGOkJ9",
+              "id": "call_5e7925ad96c54ea4bee7b221bf798a24",
               "type": "function",
               "function": {
                 "name": "list-datasets",
@@ -32,19 +32,26 @@
               }
             }
           ],
+          "reasoning": "**Identifying overdue items**\n\nI need to find the largest overdue items based on outstanding balances. The first step is to create a list of all the overdue items, which will help me to identify which ones have the highest amounts owed. This way, I'll have a clear overview of what's outstanding, making it easier to prioritize actions. Once I've compiled the list, I can address the largest overdue items first. Let's get started on that!",
           "reasoning_details": [
             {
-              "type": "reasoning.encrypted",
-              "data": "gAAAAABq9Yoctnf7yPLsIpAQQxxMdLVGaAxg9283lK53JoXyNkYe4g1eqR5j9DHjm60jWDT8hFJqfo6HqymIgIwOWQ3_bMJSAEM_lpPYAdl31IwIee4ERvEUV6ctOROf-Gp71VXMMrXo7LC0sNhWOiZ4lo1S4jmP-pMInTYlvPQE_iMB9lFGdm4qqKvDy1a9PxAiL5QHQvulo5IoVq0xHc9v-TaZ53wPFERcDQFrGF7G5vkST9ketBUSBBR44ef2dnJhtOUXmCfnkaX7IU49cPDaTaP3fv7bqD1lTFSigKEfujHA_8IzRFbXkhRQlHt1xNC2mHHhrZPMuzfooc7_0JDDVyKZ_k3gpxPd9z4V-NgjzMTUvtpFd2T1QlYx9H1KaVYbZPMV1M_zT3H3WX6rIYlc2F1g17GtynHyKC5plSOT_HXKiQ4Hs9SpxkXbhy4VolbuDKhabYj12V1ioITuoo6Asvvyuob4NVrNMKjjZn_LNXMIttdUE_Yrgcy_eI_qSeFk0k97bzb6Z6sGavuMr7KVcqwbPS3XixL_aupwe3jAuoy9x-qx1RmyZdjhbdWTI17F9Ocqlo6M6OdvhxHlj5IexUgmSOiSgw_dwPIJnFiDZs6m3sa4cCD6weBhLsn37UqpTnq0WnzAF1kcAp8dxRBX40fEg1ZZEbHOYw1_hbK-655IicuswosfqobNMsa-_4qZ3XHnRxwtKptwxCAZD7cPVHL2hfOr0xSNhY7pC0yVwQ0BZU6OBYRZ9mhJyKNBKb6spJc_t0zlA26vlR0-jjR-nn05foGpz9rlEBhDAEkGmsB2F2Ezsf14U1cikkHt48HuqYfnuhzHAo47piJPdtxl7vsm3bgnV8ekSyFYy3OwL5-Ai0bDKWpi5HAVbyX_Z6qC5mRrNEWWu-qDhLm_K32_ghrKh3LI1ezfRJYtulcF16sI0EQmOZoii0ElaBzrZrNRRBe7cQMnVaiqUSug90Q4oFg6l4rFu7qCgfcpspiT7qW9fReo58-cc6g1UcJST6LzbSNcSDwDR4VHlR-j8jU5BrUx_wcZoKo7xizDaH_IEtXXuARv5bU8kvwX91t3Wly-MXpUydbhoo7p0srlazEwMSsr4fTUlFdb-8-f92N_BM1K9kkAC4_qekFdyfrQmPbOJvncU8Ys9w56Yb9XT8tbW7EyC7U7Kl9HuEUDOPGigx6qcxj3CTI8GgoZVFkVzPKgzFZ2FrQSa1SWT2nm9browFLGHXn72v8az5hgUH6d1lz9-k3WfYPtuSMmolchVxT-aeEap096wdNqVsZl5urDDfD16Hc4_rDkbCTrt-kDs5rhpt0l_wGPaRzTyZavtAIzx28j-GHkQpYoD91wlL6pQ07peCxSXmt_07-gZKEw8ifA4EdubVvUYoZ24Eh87NfVGaHbpdljVS20HN8ajosfQAs0MCzwtjCSeTNYEaBNjdAbqQRkONpOFmsjRj9hB0TE8B_1vOmGgR5AcUscTvViCDPaldmMJhEjWA0QaNjPEk-WLxfLUpwmz72INeM80c8OhUih35ypoec1I0buK4LRzGnIk9PIPttA_G-bCalZZ2nMHN3zLwZxqF1zB3N-QBiJ823iBPHGUrIk7easKVHx4gVsm9OHzlkKzUyAcBKjk1kKpblgL1wav7ad4cjM2raQ54Zu7fRSwunYY3w3MKYlIcdorshAus-xTEijD9nm2EjfsFWTARL2HIe-8batVCe-YRRTEcqjgIhrlmZYgX2ZI2fBcR6KsxLSSZOnO__MkQbwSXQ9SCG-iS7gzcr8MQROlMWt7W0fq4gPKd8za379Tz8EId3Wmg_NcgW6wPFSyKwla5L8MiexHFaET5Nm5E35X8IYvrFKW9tM09QK-CiQgVHHqbuX3g==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0500a9bda2b69623016af58a1c1ad487d19a627de89cf79216",
+              "type": "reasoning.summary",
+              "summary": "**Identifying overdue items**\n\nI need to find the largest overdue items based on outstanding balances. The first step is to create a list of all the overdue items, which will help me to identify which ones have the highest amounts owed. This way, I'll have a clear overview of what's outstanding, making it easier to prioritize actions. Once I've compiled the list, I can address the largest overdue items first. Let's get started on that!",
               "format": "openai-responses-v1",
               "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABrB0-ybodOd9LxQkCu-1_1ozP3ev-FBhIqXDDBH8Po3H-mKik1PDU15toTgW7zXHcpc3aLVhUM5dL2u3vmmeMwWwBQIPDvFl08PhyLaiIBJizLqGJq_faAs0xhyRGgQEHUO_zF4mpmbbzrbF4KRm5AXfvFNOz9_sWImJLlF8MQJr09mKol-_0ILy6wnjBy_LNnXdiLuBAs-8rtB_ayIidmxPjAPddvrHHcgontygwjMO9oRXdpc4Pso0IZwZqA2LcWItx4bupTYn-JFnUWYtIEmDKUeyUvnoGsDaxADmbmv64p2_2iKi59Jdoeaxos6BfgPlSfH8nyUhWFa-QjXT6taRNmMxTk1y8Z8gtTj2ke2_RIgcu4qYamvdfiVeEXsmSzB2zGq3nhhHcpXQ4S13CHU42wEf_qTPq1vXeSDqmhzhoZf4vTJc-NdpatYnrLXc4JkrxvplOSIl62S8asDnleYh4j2Kuuvd2_EHm7PkuwnMA_E9p9eh23yQBg40_aEuDsmtmHYAx6NyjQOCcKmDFmsstY5JlVt5nNLKFYg-mwjJyrYIoNpm23ZkXH6a7ewcuhw05cb8IZLandUNNuWUzHuIqr55VN-TrD8J3zN6xBrmg3Hm6d2r8067VA891TjEYT9erz9pOt23x2AGj3wm2CAJp3McQAstvC1620I97Z2hV2ODF_VxJvAS4syX6Jru8zTjN13D5i2aGpsdK9Ij5Hrf1WRr7FmT89M-7kRBdaBz9PcGp1GGYaOBcCwCVZgGNYOS3gHQhAKysl5G6OGfob875Q-f4_EhJ-5X2HDUtcFV858Q_xW2r56ODhegW5mo_iVOyrIbilRZXw7JEZ1Hxp82yWIRwE8pHZRXyD1M72dcdy-DiUuGPMsCJz_hLwsTE0C7Ye75cHwkjL_f-oMgfuxnEic2Vj12rtVU315-w1l1djEfbfcJULmxOApzejwq8t0pbU_NC4WC9pQ1epK1jdd-jNEK1r0uXVvIP6Qs-2BPVBKCQhQv_yeoKlZZ9d8kjgTNH2Bk-g6nR1FUV1bedEIB_OW2s5FTEXLaYoS1iwC2tQPpAKjM9kcX7Lrr8Si6xymnFU8iATyvd_6dZC9DIrwqEBXJdNdYJtTKQYL4MAEClUuf0PQ39CWvwBjD9Az_IcgMvr99Q1-WE_yHNFZfxgg3R8mPPt7zspjOyziAQnQX4IAET0mr5fDsGdVpWzhL90frC1NIIBioPAx6lPuRGMWYMcsxSIUWltciuavao3A9xFcPGvCY52GT0PWWBx6Elf2A64cf_IstcHP-L06aq3WG2Z0PqWw4DqsCYLXlF89MS0rYsb9jAgvRHiF-WeyQ8_zFgEU3E-RrlhvuB6zzQ7eegMTlh8mvMGicjsdOrqQM6lWGSyyXn7ZzlLsvJQSHrmPHwHLdNGWdKeu-r3uCQbV48CNet7R6VLEyncGplHuZmvp-Dwpn0gvWXX27ktfrJcpFj8en_jyO2Zm9bSgbnZS-z8LDgaNtFRFiCkVf17vjTAOwBTr7tlBgJTZpETgHUy5CapKq2YEUxNcDwPtSFWvh6vM5TS1RMpkbVb0R66t5_Vn1Ih9nOtVOPVlbf4EUBDy8bfkAL9SDRb89wTCZSldf7yNGFAQ3MuPwGCV2XIYHc9tHhyl4HrehuBeUDQhHJSr3NuuOTmdyu90xOHmx7XkEZ1yb6PwARL8PjzzKnf3fMNjLXWbJRFSNF9hTd1y2gYKkC-tPN_iywbzvik3zfZf9U4B7YCOyVL0M2952AaCfY7EXD2Wl5y7vWMfdJpedslLGfrC1jOjSE0C4agTbLWOfHXOYaY3o2sPJtgkoLCEIbToitP6JLTd56mOnGGlA3XOi1nbabbwPiVAGmC6sDy9LpyG3jIVgtwwQGCOaL-b1S4jH_pcYTSUMyNq1pAdDh7BiJolTbwDGlr5GqeSYLn3zrCr2CTDx_aHrCipmLRt_80OQjL8ybkzyAMh5b1SpZ6n4fk.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_0274e6ff4404f64b016b074fb0f7d087d1b34463a3d0849ce7",
+              "format": "openai-responses-v1",
+              "index": 1
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_9Sd6AUb4MVBQj9nSyDXGOkJ9",
+          "tool_call_id": "call_5e7925ad96c54ea4bee7b221bf798a24",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         },
@@ -53,26 +60,34 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_MQp9RZbkQBybVFJD2g6CCZ1j",
+              "id": "call_b9f392be72114a0faf0d874e64f98a71",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"largest\",\"field\":\"outstandingCents\",\"fn\":\"max\"},{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"status\",\"op\":\"in\",\"values\":[\"overdue\"]}],\"groupBy\":[{\"field\":\"currency\"}]}}"
+                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"as\":\"count\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"status\",\"op\":\"in\",\"values\":[\"overdue\"]}],\"groupBy\":[{\"field\":\"currency\"}]}}"
+              }
+            },
+            {
+              "id": "call_adbac90b8a4047f2909931d588770469",
+              "type": "function",
+              "function": {
+                "name": "query-dataset",
+                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"status\",\"op\":\"in\",\"values\":[\"overdue\"]}],\"limit\":5,\"orderBy\":[{\"column\":\"outstandingCents\",\"direction\":\"desc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"currency\",\"dueDate\"]}}"
               }
             }
           ],
-          "reasoning": "**Figuring out outstanding currencies**\n\nI'm trying to determine which currencies have the largest overdue outstanding amounts. First, I need to identify the relevant currencies and see how they are connected. Then, I'll group these currencies to see the maximum amounts and keep a count of them. This will help in analyzing the situation accurately. It seems like there's a bit of data processing involved, so I'll plan accordingly.",
+          "reasoning": "**Organizing currency queries**\n\nI need to look into checking the currencies and grouping them, as well as identifying the largest ones per currency. It sounds like a good idea to query the top currencies at the same time to make everything more efficient. I'll work on organizing these queries properly to get clear results from my search. Getting this right will help me present the information in a helpful way. So, let’s get started!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Figuring out outstanding currencies**\n\nI'm trying to determine which currencies have the largest overdue outstanding amounts. First, I need to identify the relevant currencies and see how they are connected. Then, I'll group these currencies to see the maximum amounts and keep a count of them. This will help in analyzing the situation accurately. It seems like there's a bit of data processing involved, so I'll plan accordingly.",
+              "summary": "**Organizing currency queries**\n\nI need to look into checking the currencies and grouping them, as well as identifying the largest ones per currency. It sounds like a good idea to query the top currencies at the same time to make everything more efficient. I'll work on organizing these queries properly to get clear results from my search. Getting this right will help me present the information in a helpful way. So, let’s get started!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YogLtzMmADC_gtTjvWLVNWyOBv0xfRkv2xjW7yaMRVoeSEhebOWlhHkdc37Klk9lzmTfgtoqYzpaAeJEBffjrce6rLBw0olxOCiKaVDtGcdawD-3Pe35xEf-ws-5RWyt8joKl6h4Z5Nv3tWiMAjV2Dmp_ulsC-lfLYy-KLc5RG4rbpaQBfFa4yd7MEoa0FMk-ui6yfwvv-bm-AGztI5GDgbEZCeORWRcpe1eNKsTkrlx-suC4_HiGyqfQ_7m98HNDQiRVNAWQ1poTmq9unhi33p3rRYsUgTCuK0hQAyJDBP50pOW4Z1xsJRMHqsasomIvI5KBihud98A1BZ-VghCbjjWj51izOp99qs9bsQ-DYrsucVHriaNyrbYpVQLKwqfyCILaoTpOnO40otcvDrYvcK4sh2f2PH_8xc8W-DIw6kD6r1djJp6OGukHQu_jAJ13aOpC3zV6i7oPkhahIoip6bNu8tmxxJSg5-mJPo8yPd_z-QyF6bp-Zt7GjxMYYXMTlsGKmJGH4g6fBk2clOaT1xY41YvmheHs9km7WYxWmC1LyDvrneSqWKm7Ch6wa_Rn1M12kED_0teOmLj6R1lIKZtomOoh3xJGASTPzRZ-Vg84ZsJUbxaNYd3BOFcaAyQPoYMv4YpeUx9hDg5vOyGtek5dHpQY3UnMJH4cKg2TEzAd3SyRhbnQ1cP9FOKiSFYLQd--eNMQcb2ua0x5pPgkPBxoYFLdeMN3LmqxxLb1Ue1UEyQjgPx4QBfP7T30AyYwrcPp0eBNMZ6WzeuPPt4DJfRtx-w3oQTQWJGEdYHHxjww8ZSMqBCMvdB7rcsq36gADpgWABZHMoL23q8Egs7K95nb0b1NudtDyqf6CKkPaxC7vPxnYxwKLi0cs9VE9K1agi3OImGByyIfdFKUEaIXW3e5tdUZ6DfN_ZOdktVim_etGWpUUmXwtSZ2g5AYig5HFMStwOUGFCvv6UJF3XNDs5Kfvf_hGTX2h_Id7fem2WU7gI4sYADdJWZZa--Rew2eWg-pwLMns2SDFH_WMrVXFoWkFfFIx26f7_JOEQuJ3v17_RdhADLQubrIw00c3w4feOtyuVq1_hOSUcsMLvLeI8Uu3-Iknrn33lG6sw21DG6cz2yZDPYl-PGEDcAEVoBuhPUP60TIlSY2x5crKBe4Ti6detquGbXJ3E-gEspE-9cQ_Udk2Ac53W-dI7RGcQ1YFusD6l9Myfj3G8vxpuqW_WD-RQLhRPRva_4XNMYRrhNtxCh28C1mq-skJ7vl9_aXkJznw6kbei5NhbyxzrU5gAI7s2DUBII-WaFLQJngf19HIcqGvb8HMn0VKfjr1qO13tvf0ZMizKLMt9pvG3HSrVu2mLjTYBNpblKnLKZlgDkr9MSeCOAP1wl-J82hMXStM0QmZ9V5w3EQrsWgeODOZVlNbDm4-wmsmsl5f1t6lq_B3Q0nqQq4gnSXqJYZJqN992f1tarNnFoKubs549RpminkS7tBTlSH2ntJViLrz2LmVCTIG4dNzc3o3u1SxTJpSqSamFxF0ROgHwMh9uZOHGtpPetmis7ZJyxBRv41hWIPqEbMXhafodwJ0zKc026nzvvZkSGAuBNB4YRQ6hgdX7Ms41vwaVxWIDnVyrA1cD6CoXcm_uKtcM00Y_mBQy-XL1uRCGkEUdscl92k-0gYbz-e3hP492jE66G9NNKHti96weUrCaAOOVfXOupwLkmF0y13mBEWntsXseYUoK3l33hsFZuMYUdJTNIqJ0NPmFGnkjaJ816N0K6rwabksxtI8dFLBoNtI5uYkSqCWcQMmqVnqh8PP-t_p1-EodGivfKYwaNAnF9c5xGuMG8wWA29som6h7Mne_6CG-cUG-4YuC7PRuUOhJZS7oObCVZV70VMWX1DFVREarPA6d22gkfiSAJRgUAbiApArJZ7epDOdzSXKIZ-oPnPON0K03X3K6PqBmNfkPj55_yIUkq6UJQ8ly5GW63BaoSeJSwdiJAaMehb44Y2_A5wa9p65mMudWf2yaDWSDSB3UMnKlWgShZdF4XEXLHpum16odE4ES4-01JIeqFx33CPxFAA11WbZTkUU=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0500a9bda2b69623016af58a1e7b6087d1a0cf8905c21cfdcb",
+              "data": "gAAAAABrB0-2uS9YfLUAixvqAOGtzItqROJph_kzm_M9xMj7njItFPtyeXYs7WyJ0DvI45drhSmpZg-EXQJjrRP_2nwomKtpopbw78FcwqsoiQa45CYQPzrdz8M0Dy6MqoAWsYvrL9jqAglah9ww25OrzwIbYlrbKD43ZbO9KWY60Sz_7v2TmUlWRL8ucRHOryjQm95KLEfWFFnfrD_kHDO1zynTQqUil3MNyPiGlppV1gLMh7IjqMleocMIB4PkAsz5xszn1Ft8hQsz3akorLMoGJRdh88cwaXccKLlHa4l-xK2HsJ-v9AAfde6KU2wIWIYNYjXLYWgPCkz9Xwb5_cr-ZGxht7qjodEKsbuwuBCzrZGMX_tGEuPMY3MBhRkSYjGK72R4bRhQSarhFsiJnX6BifcJJBkcuUtvU9J4APwYrGBPU3L4USiYblitqR5qiqX71Pts7LodW8lhQ4LULk2Eh8UGKKxQa7Z8FmaVduCZ5ITsbRZkfG_tS_sJSasp0Epc6GVsfjm8ICMRJQLUdcwnCW3v4f6mn_xrBMXz9PsdGIYuTfYdiA8uZV2ufNxJ6-t8KRUlep9TXvYZiOHmIFQTNobDB2EFOkDyQM6buTgWQTo7fGm-8HHe9lphN28Z-AmwnPnlPsv7MHNS6dXfqztJHvDPqg9m8aMx0wve5ZdlFUdHn_tPFFYaOoYYSU62F0pTJSrndBbHLStVnNsSGdSh3liTP79UhbcCo5jz-JT8GBldT2I1efxdgrLVq-gSsrSy_B4ULC3wgwThUrAHvtOfE8Pgh4ppHE4GBVWZiOkbDVnBTBJ25TBH4EbChKWto_b8HLWUHPwJGQVLNHroZdeAI99eWbwRdKo7i2bBMWR5q9deUXNhT4fLrfxvQaV6mmu2To16R1talHWsmiSWbBxbyVGUtdQ95lPUFd1pQgmXO0Gahk7z8HPxUbEEiF3idPanOqi0lgdAhSgfAsnKJHeQV_PeJr6M-gTew9YmUxySx5yhU-MMRp9dezod2yKdz-7WNfcdS4yFQbUZ0l7TswwgiC_CQw5rQoWHm23HkRB-n3E5gZaX5K35Sw_Nbo9rMzcMjpYC5D5R6a06UHF2WTIzvPrYO0SM_cM6tBgv-BfhwKR65y6vvnPTsBBfk-In8SNRuU5vuzFVZk7IBAQwuI-wsREqO5IoFafVNjVe_qQFY-vpeh04Y3xSj-Rc3iGdiE6BUMD4sIv38-AaiOJxVpuKli4HD2rJwJ9_TuSZxsR4hXhBuKuhy6nOzRgCuo_XAuTIf1njM_jCBIXWK-979oJMsIPig5VXXnpDs8dUQZS4diON5wE8k6OaFOSZTLOPhAIR-mU8xkpH07rVMXhxb8qdum71y4N909yVsZJiXeVCbUTOoWuOS6lZv8ex2p9Qah2DCGa-m-mQbu95Tmb6ZpbcQX_BcJZXJTN_7_3ZLmrE7hkC4aLrRf9MVRYn40wpkbhzxFwa1zGnoaUrl5r8XLpqZOIWdpwel7xIXyW6GowjTj1mjIi1Qeil4_uigLYE2K6TE1W-4EMdmicN1R4xB7MHPyPNGIaOqTJsHASbs2ENrdm8ya-jAu2VMwnJyNZA9g9EVSdarGzH9dElz3pVDJdwtriEzY1PoVXmXAMvqTKmtoZAP5Z55wlK7AoyBDif5PO_ujx4J-84b-vxXG-bRms34GGmVQoD8MqnoMeOSsgb3tcQerVYs-M5xeGGTcFb3qekV3g2p46Z272L-iO2ekAelIKdN6I7zKR0AgTNLp7mBOVvGsa2VUq8E-JFZ3qrazKvLd2mMeMw8JExfSXMTbM21jHMPF2F-FkkGPHs9WZgMnZR2hvbtqS489xB0ln9QZW-x0Hyg83SqkxF9pTVNCbaQefrW9GfoG-XFAPwr-yIo20Q_KIr1O82coSgUxzAnbvBprdLRNWfTk2zm9pWvptxmdIR1OItMwkaK6YYEP3TXgvvhf32o5Jhubj7uDgurrdC253AmWJPMEnxyk3Hr5VbEZQTlhcAhrB2SaRAuU5grvuMZcjVcdPQNI5OEn5a631p67VyDaEnJ9oEbDkY9-UC0Sb4C2LKaWI3uCMRl_74y_qO0rVhYs=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_0274e6ff4404f64b016b074fb49de487d1979c10bbca047c34",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -80,8 +95,14 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_MQp9RZbkQBybVFJD2g6CCZ1j",
-          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"largest\",\"type\":\"money\"},{\"name\":\"count\",\"type\":\"number\"}],\"rows\":[{\"currency\":\"SGD\",\"largest\":740000,\"count\":5}],\"truncated\":false}",
+          "tool_call_id": "call_b9f392be72114a0faf0d874e64f98a71",
+          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"count\",\"type\":\"number\"}],\"rows\":[{\"currency\":\"SGD\",\"count\":5}],\"truncated\":false}",
+          "name": "query-dataset"
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "call_adbac90b8a4047f2909931d588770469",
+          "content": "{\"dataset\":\"invoices.invoices\",\"asOf\":\"2026-10-27\",\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"invoiceNumber\",\"type\":\"text\"},{\"name\":\"customerName\",\"type\":\"text\"},{\"name\":\"outstandingCents\",\"type\":\"money\"},{\"name\":\"currency\",\"type\":\"text\"},{\"name\":\"dueDate\",\"type\":\"date\"}],\"rows\":[{\"id\":\"da68d9e4-d1a8-4072-8ecf-ed60896b5089\",\"invoiceNumber\":\"INV-2026-10-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":740000,\"currency\":\"SGD\",\"dueDate\":\"2026-10-17\"},{\"id\":\"4aa4d28e-7fda-4ae3-8170-0a4733b92d61\",\"invoiceNumber\":\"INV-2026-10-01\",\"customerName\":\"ABC Trading\",\"outstandingCents\":650000,\"currency\":\"SGD\",\"dueDate\":\"2026-10-15\"},{\"id\":\"74eb9200-c209-4368-8085-9081540617a8\",\"invoiceNumber\":\"INV-2026-09-03\",\"customerName\":\"Harbor Foods\",\"outstandingCents\":520000,\"currency\":\"SGD\",\"dueDate\":\"2026-09-17\"},{\"id\":\"c98bb2fb-fb22-475a-81db-a3f73a5b696c\",\"invoiceNumber\":\"INV-2026-09-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":420000,\"currency\":\"SGD\",\"dueDate\":\"2026-09-30\"},{\"id\":\"967d6fb2-b4b1-4569-85be-8acffd63e4dc\",\"invoiceNumber\":\"INV-2026-08-04\",\"customerName\":\"Orchid Retail\",\"outstandingCents\":405000,\"currency\":\"SGD\",\"dueDate\":\"2026-08-18\"}],\"truncated\":false}",
           "name": "query-dataset"
         },
         {
@@ -89,26 +110,26 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_io3QY2CZetlNBISgam8ml81Y",
+              "id": "call_3fc179ffd53a4d9eb6c359ff0dc77032",
               "type": "function",
               "function": {
-                "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"status\",\"op\":\"in\",\"values\":[\"overdue\"]},{\"field\":\"outstandingCents\",\"op\":\"eq\",\"value\":740000}],\"orderBy\":[{\"column\":\"updatedAt\",\"direction\":\"desc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"currency\",\"dueDate\",\"totalCents\",\"allocatedCents\"]}}"
+                "name": "make-artifact",
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoice\",\"query\":{\"filters\":[{\"field\":\"id\",\"op\":\"eq\",\"value\":\"da68d9e4-d1a8-4072-8ecf-ed60896b5089\"},{\"field\":\"status\",\"op\":\"in\",\"values\":[\"overdue\"]}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"dueDate\",\"totalCents\",\"allocatedCents\",\"currency\"]}}],\"title\":\"Largest overdue invoice\",\"type\":\"table\"}}"
               }
             }
           ],
-          "reasoning": "**Verifying query display**\n\nI’m considering how to display the query result. I need to make sure the figures returned are in integer cents, translating to SGD 7,400.00. It’s important to fetch the rows in a max order to ensure clarity in the results. I want to ensure everything is accurate and presented neatly for whoever needs this information. Let’s get this sorted out so it provides the right context and clarity!",
+          "reasoning": "**Determining query details**\n\nI need to clarify that the query result of 740,000 cents translates to $7,400.00, which is correct. I want to ensure I'm selecting a single row and summarizing the key details. Should I filter for the exact ID, or is there a need for limit 1? I think not; it seems I only need to focus on the largest value and the first row. I'll confirm if there are no ties, as there are known 5 with no ties.",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Verifying query display**\n\nI’m considering how to display the query result. I need to make sure the figures returned are in integer cents, translating to SGD 7,400.00. It’s important to fetch the rows in a max order to ensure clarity in the results. I want to ensure everything is accurate and presented neatly for whoever needs this information. Let’s get this sorted out so it provides the right context and clarity!",
+              "summary": "**Determining query details**\n\nI need to clarify that the query result of 740,000 cents translates to $7,400.00, which is correct. I want to ensure I'm selecting a single row and summarizing the key details. Should I filter for the exact ID, or is there a need for limit 1? I think not; it seems I only need to focus on the largest value and the first row. I'll confirm if there are no ties, as there are known 5 with no ties.",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq9YokvQbscVO3fmXjzpG3f72C4VGO5tQ-LYHomwH3AAbmqDgdzQolcicMMhg29oTErlPLCDAN6BQ8UD_rl7xUG_djjzWBB_QgFKwW1A0F8mfl91nuA9u3FmdZhK3z5F3uK6NIRAsI5UXkKgcY_RcVB_R9oT2vtupXiolP_Vqa9khngnbPbS0UDKv2kJKA7u0gmx0oiS88DCGMmsx_odOEc5jreeS-1Am5-ugYaZ1P0eEO1v734BhgFuCC_6r96ulaRHRM9GvcqxyrUC3NiMdZChKTkQSebc5i7o4-I4sto6VfsbpKDdA7E-A8Z3jGYpDuGDvjffRFf-B9VCdyEI_YaGZhYokobn3YsnWFa7UPFi6X89iQKrM1DeHHlFF0YgzgVv__wiH49nMm_4lqnv7TGEOVKUj-bv0Qoy3sJc8TN-URrbmBMRmMgx4lhMcycU4Cgk2AL2qORUE7fXbx_8gIFFtmv1gRuDAOJ3KkxKsm2RpSEdMgE7uwoo_PKwZ5iuX5Fvcio9JctFx37K1ylEFxjianRTKn2bM_2mM8oPW7IneyVUTKx0vRyGMWLOo4vvDyqp_ScLnTFn8Kzskz4g02ll6LQwZp9CnzAokFGVDsHX_vH6YPTnUV4X46JIsn_gSkz1IfxovjsKBC-WPHhzDpa65Cv8lxlJSzL_tYa6d8t7WB2dZAiL9feMHrDA-9wJLkdJpGvEQle_z3BVjKIUGp_b3UGRoIibGXDndP6myVKZkCNFruYY9-0oG2ErOr1Byrsirgx3aeEHAEVfnc_uX54zOQJN-gO-GRz1l3WSSmlg_QzfJjgahXjmK4Z7SYPf-2nQLJxeJbRA8QrgfbObw4WuU4xUQOObHHBa1bPXo1E9TgbztzYJwDGfj-eNTxQ3DnpDLj0KconXnrXCPdsBQX5SIIesVRfXR6_0AstOZZRvCwA9vzgXbuFHp3wS0PFBm_1Y5nc934d248YXHWqvKEDGwPlZjisLgmMH39xtcuUnz4NSUW56iDvi0YzA1uU96VZ_9rYAhq8jGrfMjNxnFfKsSLM3qXziBCYJI3YBNWzM3VS3Y8g-xiQ48CFYP_qfIclnRgLnrwvXr6q248C4A4161U0ng457bl51tCNWB3rdAuvP_oqcNcK6B184hRGKnpd30tk2tNZCxLv5FDc4lnQMuolwuDIiFxygPmrnJX0bIjBiZ_iHj2DDCWDDBErv0wFvcH1B0NolnhZuhCeUdccdLhyzm3laseMrK8DZwLnLZvl4u7xPvNp1J2X3OocMnhLngh3wA4w7tLLCYDftV_u3w5wQppmJTPMjNxYIhNeAE5qz0nvYj4taWj555B_H973MmJkYI9573zRO9mwl5rtizxxsViVxiyP4Fv4AMNkLotGvRIYIyC9O4vos6x2wJv08-SiVsFX5ZJsTD5qlDRNx_u4zoCxgZ5ybM8r25RVaGLAcWMbyxUEh1EDM-PrAW0ItDy2yNK4bfYneX7aMB0GpXfcJjj6jwyjwY2fPSwGMTqiIaUDjQkPH3BiebLleSAzAIDt0HnZh4YlI8acwELbTLYhQYIkq8AZ5t7JL49s3N-1rPJn2YaVxzHAW6MxVdA5Ux1zNIwg70X7v5U2FnuWZoJTRP3JzYjMf7mTk6tR8gGF9JA6314S2Noke1dbU2QOVO3r3DGfGlDx21RHJDQlqM3uszijGsiOHvfYo9Qn8P3EGAlBy-nkZAwEwiEjgSOeRHGKTzkMF-qNUSJzqFRZdBeczHXd4AY5njQLWPbbVWlDxxHVrmnxdA0gz2FVx8sFX6TV7lCEa9jh1bMr35i8jzFl6bi-_XOwAeivcvQQul8EPnFI-WYnuyjNDMM4SnY7SOB1Ziq3HHApaMuAhKuK7ILw26cPrC8D93h7_9CA9-5c5l8CefPC9Mx79c7U9uLPwvPbcDYoOVkOeazyPHW-ne-XRjHacqb_SySgugDAP6I9gUFECllTVwGQylkLG55875S03oIcLw8dZDOmXbKfqOcixkc_pqqfnRGGFzEPUZkoroy-UHtRLMAL3ci_0OopHRLk8p-DyCJBR0nqqWjVmP5D5gFRk_rTfs6ldvW81Mjtp2c-G_1FGHQKq-cs-fT6F5sQlcDysHSAIh2LMAeDuB79_wIB00Rlq3XZccj41qmwr5WI7YpfbrdYQkYCqr1gv2zlBj25ie4jE9JNfxTAVfNQg==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_0500a9bda2b69623016af58a224ad487d1adcc78cc63cfff6e",
+              "data": "gAAAAABrB0-7Tmtg7u6Va_4Nf4qwLettpK-M751E0U_rec0Tapc1uwIxZoNNJF06l75lFNFZhSPbv4NB27CgC_KAt_STQnDuceN5lGO-iY6rsjB6HLxTw0wIygpnVXFECjSCdNYNkQ0g3qzz8QsNyOqMQfVZXg3kFMLpGwbhmpW7sDOQPfyHgTBWqEUMREnVnFlTnN90Kkd27llDgTLEvOHkGO9074GfBBxCQxm05RFvxHKabDn0UUzsj1he2HoDo4JbSmSMI4xfXOIbpIeSvaOY9LdnrlPT0_I0NsYfRqzzAnxLdHYECGrpPtpAkFJzO81scF_e3QgqwajsUnVhM7g8WMppzARXPUiXddg-5XPFxFd8vjTpU-WeczrSrmTltVX3IXmjbyG491_-YESyC0JMN5Xymrx9O5HEAwCmm1jmnS7IPPN7_cGwojzU4oKnKNVxzKvI2iq7_U1mKlqbbushZ0KbBhpMqIV8qEcn8Ww-Kq0HiXvvoW1M_sI_6-00uDa2RVhy8jh4hm0dcKC1-tqoVUmzTl_gf7pHFZ7fFjkIdoK9EfMHqqGPz_nA9lg3A_2OgJrHvqH6YW29uzTVTQLTZv94R7CW9OGiQQ664T_ekBlmIjIv0IkEioHAPA_zUt_bf4MnzfdCINkwly--CK73y1pWNnjJq2cQ3LvuHiIeV0L8Y_6hJhCXrj56EfjC68rkoMEotLeanC9mO2mSYZw1kpWNnTPq5WVpm473NOIFuHZ0q26vo9UUZnY2SZE_GOZRyAP7QiAW60OfzxH1D0OSM55rYLEanlVMJdYbhK4GeYxFXP83JbQDJo_atAAxzMIjoyEkH2eDCylaYNdO67BfY1uxjRaHDeTv3E_N0G_uizNFx-qHCG_3nzbUS1v9cz5vRBgc1B-hJOTRnJGPGgs5slfSxYpFWYsnPkfl02kThOXndhmhgQUYXc3V6-vLXsrrIiQiGkco6DOs9nrkG16gtR-UHTglgR1Nm1SuF0LIajjtpjDA7aELymBgGyJAXiwXcU-DQxp1-31mt0bTbKLo04WXVOAyhPw0T0C0a-B0KdOcLiL1uklEed6DWttUEbcgKgLSK3qQXpbCLNjXWqw_tIK-nNvo7s8TZBmHKDz2x-UiQCd9iLr1hVd0hZHJdQeQYm4dTZaRJEoaXYjpQJnbFy_i2LTOoH1SMq5aAFTBidzBir3LEySzhIWC7jilFcQtUydDMEckYBOETFmYDhVbKf9KlqhBUU-gQNydQrrsdSeKF-KbnK8RjmbwtoekEkM_RlHg5YTMMmW-Hvx3iM-RfD_M6E5m_QPZMY8EXhmJQHdLhvA7bbUlpFY41j85tNqLEP7KR7oIpaUmmFZdLlk459_L2OG0eOjgof5KYQ3P-WcnGn4KvCqacW1smHxqunOubwSeRxv5n_YfZSUycd6IMiIWC4WqStPLpLZhuEGCmLTOsPVZuyllQMXp7aaptb1FHIf45W-AjtYHkgQTO-s7NFQsR7s3kMxlUT3s3xXfa8eahtr8Vocoz6qD864cvXm4agalzFtNBgbCeFoZTgl1wCCD9AKug1TM601oTdyYDdgBT-cVxCTbPG5uXedluycl9v6-Zu5u8fxYT7LH_XLEXtZGFN1fIK0YmQ-2E63hcFP2xXIM5gRnunGlElLW9Z6IQs2Gl1awjbMnI5fn8ruo1UUbpdUT03v16hcUrcyIw-Jp6Dz6_AFlctrj0srBTe0UosAA-sD1FiX014GjGacyVhD6SHwHnpgJvHFgtV-SWR7wZffCqSC4__V0uraS0d2Qwx-Zqx74FfpFC_9diCiiT8bH-s9xXDGOm3SsmUnmaW2yS8wZnxOyaef2qLNdfF4Tt4ImiluptjxerYKJ9C35JYtED0uGtQ1z6o6e2G05oPx28tcyhbWBrqCexK61vGrwyy8beK1ymGbvYg4BsMsuqm08lbk5RBblMf63eqrxDEuQiWfToxqtTt9R_lfzIcoA5St1hpHWIpl3Yv0GZ1fz4fwex5HxJkBEDBfD2ZrR-MXE8u-p-pCaiUcU28eFOV_l-ckSFTiKX6ZsWIUJcq2NfeCdNgyynRoGOhtjFMK2jahcVeUUG1axpki4KOOvXQLjuRCRe_01Kf8EgF6wCD0ku9V96a87UAQLe_B9LHpA5-W9oDLBEDOINSjxODz-bb7pQAo55DpG2PZl7yiP-9WofKdub7D6ucA398UfxkdfBXYGdyKOf4iYeSQWXgR8xc7GbBkxJTg4t63bpVvGATExWPcXTR58fnA8P7BnHrRSUgpG26YwSP-BwhpTsow9VPXEcncnW_hs_HE_z3uMNM--H7vJex06L2RQZBJW9mpab5RPZVSduH-fdpUXIgb5B7qEbkUCMADQRGKeW2ksYQLCwLcmN75S780gEJESG3v-G7P8RhkzgOpKmM7V_CTqKtShKAdAb671GUsXetNx51Va3fWa_rx7GLatCrB-LXDk_q7hhoeRJPJqGmh6OiTy92VX2JKzSxM3rqwB-B-jlIef4NM3v6l-kUwUTkQooL_0R7LlYg83U3kFdqvUwyUxfZ7SjxS3IcpgmL6_rqVBP6xnzA0Q1yQOLf-nsTc5uwNjlEW67Wt7fwQ=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_0274e6ff4404f64b016b074fb8518887d1a69daca79bcc0609",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -116,9 +137,9 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_io3QY2CZetlNBISgam8ml81Y",
-          "content": "Error: The query does not fit the dataset. Fix the marked parts and run it again. orderBy.0.column: Column \"updatedAt\" is not in the result.",
-          "name": "query-dataset"
+          "tool_call_id": "call_3fc179ffd53a4d9eb6c359ff0dc77032",
+          "content": "{\"artifact\":1,\"version\":1,\"title\":\"Largest overdue invoice\"}",
+          "name": "make-artifact"
         }
       ],
       "provider": {
@@ -2344,28 +2365,17 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "id": "call_hvB9wFJaQIXR3VtliUGkXPYE",
-                  "type": "function",
-                  "function": {
-                    "name": "query-dataset",
-                    "arguments": ""
-                  }
-                }
-              ]
+              "content": "root",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2373,25 +2383,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": ""
-                  }
-                }
-              ]
+              "content": " =",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2399,25 +2401,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "{\""
-                  }
-                }
-              ]
+              "content": " Answer",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2425,25 +2419,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "dataset"
-                  }
-                }
-              ]
+              "content": "([",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2451,25 +2437,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":\""
-                  }
-                }
-              ]
+              "content": "result",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2477,25 +2455,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "in"
-                  }
-                }
-              ]
+              "content": ",",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2503,25 +2473,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "voices"
-                  }
-                }
-              ]
+              "content": " detail",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2529,25 +2491,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": ".in"
-                  }
-                }
-              ]
+              "content": "],",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2555,25 +2509,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "voices"
-                  }
-                }
-              ]
+              "content": " next",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2581,25 +2527,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": ")\n",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2607,25 +2545,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "query"
-                  }
-                }
-              ]
+              "content": "result",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2633,25 +2563,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":{\""
-                  }
-                }
-              ]
+              "content": " =",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2659,25 +2581,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "filters"
-                  }
-                }
-              ]
+              "content": " Paragraph",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2685,25 +2599,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":["
-                  }
-                }
-              ]
+              "content": "(\"",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2711,25 +2617,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "{\""
-                  }
-                }
-              ]
+              "content": "The",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2737,25 +2635,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "field"
-                  }
-                }
-              ]
+              "content": " largest",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2763,25 +2653,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":\""
-                  }
-                }
-              ]
+              "content": " overdue",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2789,25 +2671,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "status"
-                  }
-                }
-              ]
+              "content": " invoice",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2815,25 +2689,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " is",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2841,25 +2707,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "op"
-                  }
-                }
-              ]
+              "content": " **",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2867,25 +2725,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":\""
-                  }
-                }
-              ]
+              "content": "SG",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2893,25 +2743,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "in"
-                  }
-                }
-              ]
+              "content": "D",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2919,25 +2761,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " ",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2945,25 +2779,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "values"
-                  }
-                }
-              ]
+              "content": "7",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2971,25 +2797,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":[\""
-                  }
-                }
-              ]
+              "content": ",",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -2997,25 +2815,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "over"
-                  }
-                }
-              ]
+              "content": "400",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3023,25 +2833,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "due"
-                  }
-                }
-              ]
+              "content": ".",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3049,25 +2851,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\"]"
-                  }
-                }
-              ]
+              "content": "00",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3075,25 +2869,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "},{\""
-                  }
-                }
-              ]
+              "content": "**,",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3101,25 +2887,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "field"
-                  }
-                }
-              ]
+              "content": " from",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3127,25 +2905,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":\""
-                  }
-                }
-              ]
+              "content": " Harbor",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3153,25 +2923,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "out"
-                  }
-                }
-              ]
+              "content": " Foods",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3179,25 +2941,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "standing"
-                  }
-                }
-              ]
+              "content": ".\")\n",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3205,25 +2959,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "C"
-                  }
-                }
-              ]
+              "content": "detail",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3231,25 +2977,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "ents"
-                  }
-                }
-              ]
+              "content": " =",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3257,25 +2995,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " Paragraph",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3283,25 +3013,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "op"
-                  }
-                }
-              ]
+              "content": "(\"",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3309,25 +3031,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":\""
-                  }
-                }
-              ]
+              "content": "This",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3335,25 +3049,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "eq"
-                  }
-                }
-              ]
+              "content": " is",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3361,25 +3067,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " the",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3387,25 +3085,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "value"
-                  }
-                }
-              ]
+              "content": " outstanding",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3413,25 +3103,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":"
-                  }
-                }
-              ]
+              "content": " balance",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3439,25 +3121,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "740"
-                  }
-                }
-              ]
+              "content": " as",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3465,25 +3139,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "000"
-                  }
-                }
-              ]
+              "content": " of",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3491,25 +3157,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "}"
-                  }
-                }
-              ]
+              "content": " ",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3517,25 +3175,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "],\""
-                  }
-                }
-              ]
+              "content": "27",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3543,25 +3193,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "select"
-                  }
-                }
-              ]
+              "content": " Oct",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3569,25 +3211,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\":[\""
-                  }
-                }
-              ]
+              "content": " ",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3595,25 +3229,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "id"
-                  }
-                }
-              ]
+              "content": "202",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3621,25 +3247,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": "6",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3647,25 +3265,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "invoice"
-                  }
-                }
-              ]
+              "content": ";",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3673,25 +3283,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "Number"
-                  }
-                }
-              ]
+              "content": " open",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3699,25 +3301,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " the",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3725,25 +3319,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "customer"
-                  }
-                }
-              ]
+              "content": " Largest",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3751,25 +3337,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "Name"
-                  }
-                }
-              ]
+              "content": " overdue",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3777,25 +3355,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " invoice",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3803,25 +3373,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "out"
-                  }
-                }
-              ]
+              "content": " card",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3829,25 +3391,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "standing"
-                  }
-                }
-              ]
+              "content": " for",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3855,25 +3409,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "C"
-                  }
-                }
-              ]
+              "content": " details",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3881,25 +3427,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "ents"
-                  }
-                }
-              ]
+              "content": ".\")\n",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3907,25 +3445,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": "next",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3933,25 +3463,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "currency"
-                  }
-                }
-              ]
+              "content": " =",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3959,25 +3481,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " [\"",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -3985,25 +3499,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "due"
-                  }
-                }
-              ]
+              "content": "Which",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4011,25 +3517,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "Date"
-                  }
-                }
-              ]
+              "content": " invoice",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4037,25 +3535,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " is",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4063,25 +3553,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "total"
-                  }
-                }
-              ]
+              "content": " next",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4089,25 +3571,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "C"
-                  }
-                }
-              ]
+              "content": " largest",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4115,25 +3589,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "ents"
-                  }
-                }
-              ]
+              "content": "?\",",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4141,25 +3607,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\",\""
-                  }
-                }
-              ]
+              "content": " \"",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4167,25 +3625,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "allocated"
-                  }
-                }
-              ]
+              "content": "Show",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4193,25 +3643,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "C"
-                  }
-                }
-              ]
+              "content": " all",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4219,25 +3661,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "ents"
-                  }
-                }
-              ]
+              "content": " overdue",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4245,25 +3679,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "\"]"
-                  }
-                }
-              ]
+              "content": " invoices",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4271,25 +3697,17 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
           {
             "index": 0,
             "delta": {
-              "content": null,
-              "role": "assistant",
-              "tool_calls": [
-                {
-                  "index": 0,
-                  "function": {
-                    "arguments": "}}"
-                  }
-                }
-              ]
+              "content": "\"]",
+              "role": "assistant"
             },
             "finish_reason": null,
             "native_finish_reason": null
@@ -4297,9 +3715,9 @@
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -4309,15 +3727,15 @@
               "content": "",
               "role": "assistant"
             },
-            "finish_reason": "tool_calls",
+            "finish_reason": "stop",
             "native_finish_reason": "completed"
           }
         ]
       },
       {
-        "id": "gen-1794476581-zTIVzozkUOYBSgTpNDC1",
+        "id": "gen-1795641275-SaO4A1k14U2I8mxOwcxg",
         "object": "chat.completion.chunk",
-        "created": 1794476581,
+        "created": 1795641275,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -4328,26 +3746,26 @@
               "content": "",
               "role": "assistant"
             },
-            "finish_reason": "tool_calls",
+            "finish_reason": "stop",
             "native_finish_reason": "completed"
           }
         ],
         "usage": {
-          "prompt_tokens": 8176,
-          "completion_tokens": 87,
-          "total_tokens": 8263,
-          "cost": 0.00106745,
+          "prompt_tokens": 8758,
+          "completion_tokens": 79,
+          "total_tokens": 8837,
+          "cost": 0.00109855,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 7989,
-            "cache_write_tokens": 184,
+            "cached_tokens": 8536,
+            "cache_write_tokens": 219,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.00106745,
-            "upstream_inference_prompt_cost": 0.00063245,
-            "upstream_inference_completions_cost": 0.000435
+            "upstream_inference_cost": 0.00109855,
+            "upstream_inference_prompt_cost": 0.00070355,
+            "upstream_inference_completions_cost": 0.000395
           },
           "completion_tokens_details": {
             "reasoning_tokens": 0,

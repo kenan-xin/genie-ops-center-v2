@@ -85,6 +85,9 @@ async function openCard(page: Page, title: string) {
 }
 
 /** Asks the question of `id` on Ask as this project's own person, so no two runs share a list. */
+/** The first sentence of the overdue invoices answer, as the page reads it. */
+const OVERDUE_RESULT = "SGD 27,350.00 is overdue across five invoices.";
+
 async function askOnAsk(
   page: Page,
   testInfo: TestInfo,
@@ -149,12 +152,11 @@ test("the overdue invoices answer gives its total first, shows its records card,
   await withDeploymentLock(
     LEDGER_LOCK,
     async () => {
-      await askOnAsk(
-        page,
-        testInfo,
-        "overdue-invoices",
-        "Five overdue invoices have SGD 27,350.00 unpaid."
-      );
+      await askOnAsk(page, testInfo, "overdue-invoices", OVERDUE_RESULT);
+      // czjw.184: the total is the answer's one bold run.
+      await expect(
+        page.getByText(OVERDUE_RESULT, { exact: true }).locator("strong")
+      ).toHaveText(["SGD 27,350.00"]);
 
       const title = "Overdue invoices by customer";
 
@@ -208,7 +210,7 @@ test("the late payer answer shows the counts per customer without links and the 
         page,
         testInfo,
         "repeated-late-payers",
-        "3 customers repeatedly pay late."
+        "3 customers paid more than half of their settled invoices late."
       );
 
       await expect(firstRows(page, 0)).toHaveCount(3, FIRST_PAINT);
@@ -250,7 +252,7 @@ test("the late payer answer shows the counts per customer without links and the 
 
       const settled = await openCard(
         page,
-        "Settled invoices behind the late-payment counts"
+        "Settled invoices behind the counts"
       );
 
       expect(
@@ -273,19 +275,16 @@ test("the monthly answer states both totals first and shows the chart and the in
         page,
         testInfo,
         "monthly-invoiced-and-collected",
-        "From May to October, you invoiced SGD 236,400.00 and collected SGD 195,200.00."
+        "From May to October, invoiced sales were SGD 236,400.00 and collections were SGD 195,200.00."
       );
 
       await expect(
-        card(page, "Monthly invoiced and collected (SGD)")
+        card(page, "Monthly invoiced sales and collections (SGD)")
       ).toBeVisible(FIRST_PAINT);
       await expect(firstRows(page, 0)).toHaveCount(5);
       await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
 
-      const invoices = await openCard(
-        page,
-        "Invoices from May to October 2026"
-      );
+      const invoices = await openCard(page, "Invoices from May to October");
 
       expect(
         await invoices.getByRole("link").first().getAttribute("href")
