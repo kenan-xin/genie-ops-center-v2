@@ -66,7 +66,7 @@ const CHANGED = "Quantity by day";
 const OVERDUE_QUESTION = "Which of these is largest?";
 
 /**
- * The answer of `invoices-overdue-6.json`, from the rows that its queries read: the largest
+ * The answer of `invoices-overdue-1.json` to `-4.json`, from the rows that its queries read: the largest
  * outstanding amount of the seeded overdue invoices.
  */
 const OVERDUE_ANSWER =
