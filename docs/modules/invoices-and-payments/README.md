@@ -201,6 +201,26 @@ Revert: take `pg_dump -Fc` before the run, and restore it with `pg_restore --cle
 
 The model evaluation (S7-14) scores the candidate models on these nine answers and their 13 named charts, and on reading the seven live uploads against `live_expected_entities_DO_NOT_PRELOAD.json`, which only its scorer reads. Its runner and the owner's live command are in `apps/genie/tools/evaluation/README.md`. The committed report goes to `evaluation/` beside this file.
 
+## Decisions
+
+This decision belongs to this module. Its number stays reserved in `../../core/decision-log.md` so cross-references remain valid.
+
+### DEC-66. The review desk is one form
+
+Question (owner question 6, follow-up 13, `czjw.187`): the review page showed floating field cards with leader lines on a desktop and a 10-step wizard on a phone. The "Before you save" panel also sat too far right (`czjw.186`).
+
+Decision (owner, 2026-11-15): the review is one form beside the document. On a desktop the page sits on the left, and one form column on the right holds Type, the fields that the document lacks with their choices, the fields read from the document, each with a locate button that lights its line on the page, then the optional fields. A footer states what blocks Save, and holds Discard and Save. On a phone the same form sits under a document preview that opens full screen, with no step pager. Fields are 32 px on a desktop, and 40 px visible with a 44 px touch area on a phone (`DEC-60`). Save always says "Save" (`DEC-63`), and the form states what Save adds.
+
+Why: Dext, Ramp and Bill.com show one form beside the document (`czjw.187`). One form serves both widths, and a wizard hides the fields that a person must compare.
+
+Evidence: prototype `docs/design/prototypes/review-desk-compare.prototype.html` (`0b6bd37`); commits `9963fc37` and `ec569364`. Spec 7 R-38 takes this wording.
+
+Options rejected: the leader-line desk with floating cards (it moved the eye between the page and the cards, and the cards drifted from their lines); the 10-step phone wizard (ten screens for one form).
+
+Trade-off: the form column is long for a document with many fields; the footer keeps Save and what blocks it in view.
+
+Designed in: Spec 7 R-38. Implemented: follow-up 13, Phase 16. Design files affected: the review desk prototype and the Spec 7 tickets that name the leader-line layout. Revisit if a document kind needs a second page of fields; the change is a section in the same form, never a second layout. Guard: the phone and the desktop review render the same Fields form (`ec569364`).
+
 ## Open decisions
 
 | Id | Question | Default if not decided |

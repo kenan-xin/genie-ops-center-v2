@@ -61,6 +61,26 @@ The app's demo seed (`apps/genie/testing/seed-demo.ts`, described under "Demo se
 
 The starter has the Customer field filter on `customerName`, the date range `all`, and six panels: the KPIs Invoiced sales, Collections, Outstanding and Overdue (1 x 1 each), the bar chart Invoiced sales and collections by month (4 x 2, the Chart of the recorded monthly answer), and Overdue ageing in four ranges of days overdue (2 x 2).
 
+## Decisions
+
+This decision belongs to this module. Its number stays reserved in `../../core/decision-log.md` so cross-references remain valid.
+
+### DEC-67. Dashboard saved views follow Tableau
+
+Question (owner question 8, follow-up 13, `czjw.192`): the view menu mixed the dashboard's own filters, a saved default and the saved views, and "Save as default" stored the current filters without a way back.
+
+Decision (coordinator, 2026-11-15, under the owner's instruction to decide the obvious ones): saved views follow the Tableau pattern. The view menu lists Original and the saved views. Make default picks the view that the dashboard opens with, one default per person. When the filters change, the bar says Unsaved changes with Save view and Reset. In edit mode, Save as original stores the current filters as Original.
+
+Why: Tableau's custom views are the familiar pattern for saved filters over the filters that a dashboard was designed with (`DEC-59`).
+
+Evidence: commits `92f9673e`, `f3f84a11`, `b683084c` and `18150f7e`. The Spec 7 R-49, R-49a and AC-15 wording is proposed by the build, owner to confirm at G3.
+
+Options rejected: "Save as default" over the dashboard's own filters (each save replaced the designed start, so it could not come back); no Original (a person cannot go back to the filters that the owner designed).
+
+Trade-off: Original changes only in edit mode, so a person who wants new starting filters saves a view and makes it the default.
+
+Designed in: Spec 7 R-48 to R-49a. Implemented: follow-up 13, Phase 19. Design files affected: the dashboard header prototype and the Spec 7 tickets that name Save as default. Revisit when dashboards are shared (Not built below); a shared dashboard then needs a default per person over one Original. Guard: `defaultViewId` names the default view, `null` for Original, so Original is always one choice away.
+
 ## Not built
 
 Shared dashboards, free SQL, a dashboard slot on a core page.

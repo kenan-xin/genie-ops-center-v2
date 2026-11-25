@@ -67,6 +67,7 @@ The authoritative records are `docs/core/vision.md` (the DEC-1..51 table), `docs
 3. Reuse by entitlement: a module reaches a second customer by granting the entitlement; nothing moves, nothing forks.
 4. Polished defaults under every override: each tenant starts from a designed default that must stand on its own.
 5. Boring first, open to extension: a module ships its plain workflow before its AI features, and a deferred capability names the path that reopens it.
+6. Don't make the user think (owner, 2026-11-14, `DEC-59`): every screen follows an established, familiar industry pattern and its standard words. If the right pattern is not clear, research how the leading products do it first; for access, these are Okta, Microsoft Entra, Google Admin and AWS IAM.
 
 ## Accessibility & Inclusion
 

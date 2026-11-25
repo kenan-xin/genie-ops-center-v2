@@ -145,7 +145,9 @@ components:
 
 **Creative North Star: none, by design.** This file documents the fixed base token layer — what every tenant starts from and what no tenant can change. The layer deliberately carries no editorial personality: visual identity is each tenant's contribution through the one customizable brand color and the approved font list, so the fixed layer stays neutral enough to sit under any of them. The values shown here are reference defaults, not brand choices — `blue-600` stands in for the shadcn `--primary` variable that Branding fills per request.
 
-The voice is calm utility. A white page, a soft gray sidebar panel flush with the left edge, hairline borders, rounded rows and pills, generous air between things. The work is the loudest element on screen; polish lives in precision (measured contrast values, one focus ring, one height scale) rather than decoration. Depth is conveyed by hairlines and tonal steps, not shadow. The system is thumb-first and forgiving: every screen is designed at phone width before any wider layout, controls keep 44px touch targets under 1024px, and phone flows use bottom sheets rather than shrunken desktops.
+The voice is calm utility. A white page, a soft gray sidebar panel flush with the left edge, hairline borders, rounded rows and pills, generous air between things. The work is the loudest element on screen; polish lives in precision (measured contrast values, one focus ring, one height scale) rather than decoration. Depth is conveyed by hairlines and tonal steps, not shadow. The system is thumb-first and forgiving: every screen is designed at phone width before any wider layout, every control has a 44px touch area under 1024px, and phone flows use bottom sheets rather than shrunken desktops.
+
+**The Don't-Make-the-User-Think Rule** (owner, 2026-11-14, `DEC-59`). Every screen follows an established, familiar industry pattern for its kind and uses that pattern's standard words. If you are not sure which pattern fits, research how the leading products do it before you design. For access screens, these products are Okta, Microsoft Entra, Google Admin and AWS IAM. An invented layout or a new word needs a reason that the familiar one cannot meet.
 
 Authority chain: `docs/design/design-system/tokens.md` is the source of truth for the fixed layer; where a reference component or capture disagrees, the token file wins. A binding product constraint rides along from PRODUCT.md: the fixed layer and the defaults of the customizable layer must look good and well designed on their own — tenant overrides sit on top of good defaults and never excuse them.
 
@@ -155,7 +157,7 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 - One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus, overlays and the 1 px lift of an outlined button cast shadows
 - Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
-- Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense (40px under 1024px), 44px large), 44px minimum touch targets under 1024px
+- Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense (40px under 1024px), 44px large); under 1024px every control has a 44px touch area, which reaches past the visible edge of a smaller control, so a 40px button stays 40px on screen (`DEC-60`)
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
 - WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
 
@@ -232,7 +234,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 **The No Arbitrary Pixels Rule.** The scale is the Tailwind type utilities and nothing else. Any `text-[13.5px]` or `text-[Npx]` is forbidden in every component — `grep -rn "text-\[[0-9.]*px\]" src` must return nothing.
 
-**The Root-Follows-the-Preset Rule.** The tenant font-size preset (set by the branding seed until the Typography tab reopens) sets the root font size to 14, 15, or 16px, and the rem-based scale follows the root without per-component changes. Control heights do not follow it: they are fixed pixels at every preset, so a touch target keeps its size when a tenant picks Compact.
+**The Root-Follows-the-Preset Rule.** The tenant font-size preset (set by the branding seed until the Typography tab reopens) sets the root font size to 14, 15, or 16px, and the rem-based scale follows the root without per-component changes. Control heights do not follow it: they are fixed pixels at every preset, so a touch area keeps its size when a tenant picks Compact.
 
 ## Layout
 
@@ -307,7 +309,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 ### Navigation
 
-- **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px (touch), 36px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
+- **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px, where the row's own box is its touch area, 36px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
 - **States:** idle gray-700 text with the `bg-hover` fill on hover; active row is an 8px-rounded white row with a hairline ring and brand text and icon (`text-primary`, brand-on-dark in dark, `aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, brand-colored when active.
 - **Mobile treatment:** the hamburger opens the drawer (84vw, max 320px) over a dimmed scrim; route change or scrim tap closes it. Category collapse state persists per device, not per account.
 
@@ -335,6 +337,8 @@ Skeleton blocks match the shape they replace and animate only when motion is all
 
 Lucide, 16px in text and pills, 20px in navigation and buttons, stroke 1.75. No emoji as icons.
 
+Icons line up with their text (owner, 2026-11-15, `6wz1.113`, `DEC-61`). A leading icon's visible ink starts within 1 px of the text edge of the column it introduces, and its center sits within 1 px of its first text line. The icon box sits at the start of its column, never centered in a wider one, and the `iconLead` offset covers the Lucide side bearing. A hover tile may bleed outward with a negative margin, never push the icon inward. The icon check measures this in every story at 390 and 1440 and on the app routes.
+
 ### Scrollbars
 
 Every scrolling surface shows a thin, quiet scrollbar (owner, 2026-11-13, `6wz1.104`). It is 6px wide, with no track and no arrow buttons. The thumb is a gray pill: gray-300 in light, gray-700 in dark, and gray-500 on hover in both themes. The token layer sets it once for the whole app and Storybook. No component styles its own scrollbar.
@@ -353,7 +357,8 @@ For now the sign-in page and the emails carry text and color branding only. They
 - **Do** route every destructive path through the shared ConfirmDialog with Cancel focused by default.
 - **Do** turn every table into a card list under 768px — one card per row, actions in an overflow menu, no horizontal scrolling.
 - **Do** use the loading state for any action that leaves the page or waits on the network.
-- **Do** write every label and message with the words of `docs/design/design-system/terminology.md`; a banned word fails the scan.
+- **Do** use one word for one meaning (owner, `6wz1.110`, `DEC-62`): write every label and message with the words of `docs/design/design-system/terminology.md`, and add a new word there before a screen uses it; a banned word fails the scan.
+- **Do** follow the familiar industry pattern and its standard words for each screen (`DEC-59`).
 
 ### Don't:
 

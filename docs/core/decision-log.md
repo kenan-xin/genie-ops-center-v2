@@ -782,3 +782,121 @@ Unverified: the two blockers come from code comments and a code read. Other stat
 Designed in: core ticket for the blockers, the settings and the runbook (filed 2026-11-13). Revisit when one Postgres server is the bottleneck (read replicas, then a pooler in transaction mode), or when the job volume needs a broker (`DEC-12`). Guard: no state that two copies must share lives in process memory; a new cache reads through the tenant context and is cleared by the same notification.
 
 Amended 2026-11-13 (owner): the shared download-link key is stored in the deployment's database, not in a new environment variable. The app makes the key itself with 32 random bytes the first time a copy signs or opens a link, and stores it in the one-row table `file_link_key`. Every app copy and worker then reads the same row. Reasons: a person who can read the database already holds the customer data, so a forged link gives that person little more. `fetchLink` still runs `can()` for a signed-in principal. Precedents: Keycloak keeps its realm keys in its database, and the Better Auth `jwks` table does the same. This repository already stores `session.token` and `verification.value`. Options rejected: a `FILE_LINK_SECRET` variable, because it adds one more value to every `.env`. A key derived from `BETTER_AUTH_SECRET`, because it ties link signing to the auth library's secret and gives the worker the auth secret. Stored per-link tokens, because each link needs a database write and the old tokens need a cleanup job. Trade-off: a database reader can forge a link, but that reader already holds the data, and `can()` still runs. Guard: only a key that the app generates for itself lives in the database. An operator-supplied credential always enters from the environment.
+
+## DEC-59. Don't make the user think
+
+Question (owner, 2026-11-14, during the follow-up 11 dry run): screens drifted into invented layouts and private words. Examples are a second "Included in" list on Grants, a squeezed Access tab on the person sheet, and the same thing named differently on different screens. What rule stops this?
+
+Decision (owner, 2026-11-14): the core design principle is "don't make the user think". Every screen follows an established, familiar industry pattern for its kind and uses that pattern's standard words. If the right pattern is not clear, the designer researches how the leading products do it before designing. For access, these products are Okta, Microsoft Entra, Google Admin and AWS IAM. For money, Xero. For saved views, Tableau.
+
+Why: a person who has used one of the leading products already knows the pattern, so the screen needs no learning. An invented pattern costs a design, a build and an explanation, and the dry run found that it confused the owner.
+
+Evidence: three pattern audits (admin portal, workspace modules, shell and chat) found 40 classes of drift on 2026-11-14 (`6wz1.109`). The owner questions of follow-up 13 then replaced invented patterns with the standard ones (`DEC-62` to `DEC-67`).
+
+Options rejected: a house pattern per screen (the drift above); a pattern library of our own (it repeats what the leading products already teach).
+
+Trade-off: a screen can look like other products and less like a brand of its own. The tenant brand color and font carry identity (`DEC-47`).
+
+Designed in: `PRODUCT.md` (Product Principles 6), `DESIGN.md` (Overview), vision principle 11. Implemented: follow-up 13. Design files affected: every screen; the access, review desk, dashboard and person screens first. Revisit when no leading product has a pattern for a screen; the design then picks the closest one and records the choice. Guard: every phase that builds or changes a screen ends with a critique against its design and the pattern for its kind.
+
+## DEC-60. One control height, with a 44 px touch area on phones
+
+Question (owner, 2026-11-15, dry run row F3, `6wz1.114`): the app had three control heights on desktop (buttons 40 px, fields 36 px, small 32 px), so a button and a field in one row did not line up.
+
+Decision (owner, 2026-11-15): one default height of 36 px for buttons and fields on desktop. On phones, under 1024 px, a control shows 40 px and has a 44 px touch area. The touch area is the area that takes a tap: an invisible box reaches past the visible edge, and the layout does not change. 32 px is for dense places only (the review desk, toolbars, table rows), and keeps a 44 px touch area at every width. 44 px is the large size. Phone fields keep 16 px text. No screen sets a control height outside the tokens.
+
+Why: one height makes a form row line up. A 44 px touch area meets the touch size of Apple's guidelines and WCAG 2.5.5 without 44 px visible controls, which look heavy on a phone.
+
+Evidence: `packages/ui/src/theme/tokens.ts` (`controlHeights`, `iconControlSizes`, `touchAreas`, `touchAreaY`, `rowHeight`), commits `3d6ab5fd`, `82f27a57`, `ae447183`, and the touch area check `c7a7a209`.
+
+Options rejected: keep three heights (the rows do not line up); 44 px visible on phones (too heavy, and it was misread from the earlier "44px touch targets" wording); 40 px with no touch area (under the touch size).
+
+Trade-off: an invisible touch area can cover a neighbor control; the touch area check measures this on the captures (`17bcbeb8`).
+
+Designed in: Spec 3 R-5. Implemented: follow-up 13, Phase 06. Design files affected: `DESIGN.md`, `docs/design/design-system/tokens.md`, `docs/design/shell/spec.md`. Revisit if a tenant needs larger controls for accessibility; the change is one more size in the tokens, never a per-screen height. Guard: the tokens test refuses a hand-set control height, and the touch area check runs on every phase's captures.
+
+## DEC-61. Icons line up with their text
+
+Question (owner, 2026-11-15, dry run rows D1, E1 and E5, `6wz1.113`, P1): in an answer, the sparkle of "Used 3 steps" sat about 8 px right of the text edge, a running step sat left of the row above it, and a note's info icon sat above its text.
+
+Decision (owner, 2026-11-15): icons line up with their text, app-wide. A leading icon's visible ink starts within 1 px of the text edge of the column it introduces, and its center sits within 1 px of its first text line. A note with an action uses the Alert action slot.
+
+Why: a misaligned icon reads as a mistake and moves the eye off the text column. A measured rule fixes the class once, not one screen at a time.
+
+Evidence: the `iconLead` offset and the check in `packages/ui/src/testing/icon-alignment.ts`, run after every Storybook story test (`919611d3`) and on the app routes (`3fae21fc`).
+
+Options rejected: fix only the reported screens (the owner rule of 2026-11-14 fixes a UI finding as a class).
+
+Trade-off: the check adds time to the Storybook run and the app route walk.
+
+Designed in: `DESIGN.md` (Icons). Implemented: follow-up 13, Phase 07. Design files affected: `DESIGN.md`. Revisit if a component needs an icon centered in a column on purpose; it then gets a named exception in the check, never a skip. Guard: the icon check runs in the gate at 390 and 1440 and fails over 1 px.
+
+## DEC-62. One word per meaning
+
+Question (owner, 2026-11-14, dry run row A-8, `6wz1.110`): the same thing had different words on different screens, and some screens used developer words.
+
+Decision (owner, 2026-11-14 and 2026-11-15): one word per meaning. `docs/design/design-system/terminology.md` is the glossary: each entry names the word to say, the words never to say and the source product. A new screen uses the glossary word, and a new word goes into the glossary first. Owner answers of 2026-11-15 for core screens: "Ask" names the assistant everywhere, and "chat" means only one conversation; "Suspend" and "Deactivate" replace "Disable" and "Remove" for a person (Okta). The module words of the same answers are glossary entries in `terminology.md`.
+
+Why: a second word for one thing makes a person ask whether it is a second thing.
+
+Options rejected: a style guide without a check (the words drift back); replacing "tenant", "realm" and "deployment" with "organization" and "identity provider" on screen now (owner question 1: backlog, `buv3.34`).
+
+Trade-off: the scan refuses a banned word also where it reads well, so the glossary needs an entry for each exception.
+
+Designed in: follow-up 13, Phase 05. Implemented: follow-up 13. Design files affected: `docs/design/design-system/terminology.md`, `DESIGN.md`, the section specs that Phase 20 updates. Revisit at `buv3.34` (the screen words for tenant and identity provider). Guard: `pnpm nx run @genie/workspace-validation:validate` fails on a banned word in a string that a person reads.
+
+## DEC-63. A save button says "Save"
+
+Question (owner question 12, follow-up 13): some save buttons named the result, for example "Save as unpaid" or "Save the payment unallocated".
+
+Decision (coordinator, 2026-11-15, under the owner's instruction to decide the obvious ones; `czjw.193`): every save button says "Save". The form shows what the save adds, for example the status that the invoice gets, in its own text beside the button.
+
+Why: Xero, Bill.com and Dext use a fixed "Save" (`czjw.193`). A label that changes with the data must be read before each press.
+
+Evidence: glossary entry G16 in `terminology.md`; commits `d29d9cf3` and `8963741b`.
+
+Options rejected: result labels (above); "Save changes" (a second word for one action).
+
+Trade-off: the result is not on the button, so the form must show it.
+
+Designed in: follow-up 13. Implemented: follow-up 13, Phases 05, 12 and 16. Design files affected: `terminology.md`, the review desk and access specs. Revisit if a form has two save actions with different results; the second gets a verb of its own from the glossary. Guard: G16 lists the banned save labels, and the scan fails on them.
+
+## DEC-64. Access starts filled
+
+Question (owner question 9, follow-up 13, `d8l5.62`): the Access Overview and Grants opened as an empty chooser and loaded nothing until a person or a group was picked.
+
+Decision (owner, 2026-11-15): the Access Overview opens with every assignment, paged and filtered on the server, with filter chips for person or group, module and role. Add assignment starts from a person, a group or a module and adds any role: a core role, the Auditor role, a custom role, or a module role at one record of a module that owns records. This is the Entra pattern. Owner pick of 2026-11-18 (OD-10-1): variant b, tabs and a form, which adds one role to many recipients in one step.
+
+Why: an empty start makes a person choose before seeing anything. Entra and Okta open the full list with filters.
+
+Evidence: the access-start captures and `access.prototype.html` in `docs/design/sections/access/`, commits `89c53647` and `880a00e7`.
+
+Options rejected: the empty chooser (above); variant a, a side pane (critique 27 of 40 against 28 for b).
+
+Trade-off: the first load reads a page of assignments for every viewer; it reads through `scopesFor()` with a server page of 25 rows, so its cost does not grow with the list.
+
+Designed in: Spec 2 R-37b and R-37c. Implemented: follow-up 13, Phase 12. Design files affected: `docs/design/sections/access/spec.md`. Revisit if assignments grow past what a server page and filters serve; the change is a search, not a chooser. Guard: the list reads through `scopesFor()` (`DEC-39`).
+
+## DEC-65. Add person takes a profile and groups
+
+Question (owner question 10, follow-up 13, `d8l5.63`): what does Add person ask for?
+
+Decision (owner, 2026-11-15): Add person asks for the email, the name and optional groups, and saves the groups in the same save. Roles are assigned after, on the person's Assigned roles tab or in Access. A local or a brokered account follows `DEC-36`.
+
+Why: Okta "Add person" and Google "Add new user" work this way (`d8l5.63`): a profile and groups first, access after. Roles in the create form would make a second place to assign roles.
+
+Evidence: commits `2e7c2842`, `03035b28` and `b1f27aa5`.
+
+Options rejected: roles in Add person (a second place to assign roles); profile only (a person then needs a second visit for groups).
+
+Trade-off: a person added without a group has no access until someone assigns a role. After the save, the person's Roles tab opens with Assigned roles and Add assignment, so the next step is in view.
+
+Designed in: Spec 2. Implemented: follow-up 13, Phase 12. Design files affected: `docs/design/sections/people-groups-and-roles/spec.md`. Revisit if a customer needs roles at creation; the change is a role step after the save, never a second assign path. Guard: adding groups in Add person applies the same `scopesFor()` check as `groups.addMembers` (`03035b28`), so the two membership writes cannot drift and Add person grants no access that the Groups page refuses.
+
+## DEC-66. The review desk is one form
+
+Invoices and payments module decision. The full record is in `../modules/invoices-and-payments/README.md` under Decisions. The number is reserved here so references stay valid.
+
+## DEC-67. Dashboard saved views follow Tableau
+
+Analytics module decision. The full record is in `../modules/analytics/README.md` under Decisions. The number is reserved here so references stay valid.
