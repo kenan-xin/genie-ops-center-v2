@@ -119,12 +119,6 @@ components:
     rounded: "{rounded.pill}"
     padding: "2px 8px"
     typography: "{typography.caption}"
-  mono-chip:
-    backgroundColor: "{colors.tile}"
-    textColor: "{colors.text-idle}"
-    rounded: "{rounded.pill}"
-    padding: "1px 6px"
-    typography: "{typography.mono}"
   nav-row-active:
     backgroundColor: "{colors.page}"
     textColor: "{colors.primary}"
@@ -154,9 +148,9 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 **Key Characteristics:**
 
 - Mobile-first utility: phone layout is the base; tables become card lists under 768px, inspectors become sheets
-- One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
+- One tenant accent, used sparingly: primary button, count pill, active nav row, the brand text of a text action, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus, overlays and the 1 px lift of an outlined button cast shadows
-- Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
+- Plus Jakarta Sans everywhere. JetBrains Mono stamps identifiers only: hex values, permission keys, ids and codes. Counts, pagers, money and dates use the page font with tabular figures. A label pill such as THIS DEVICE is not mono (2026-11-26, `6wz1.124`). These are the only two faces that ship for now.
 - Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense (40px under 1024px), 44px large); under 1024px every control has a 44px touch area, which reaches past the visible edge of a smaller control, so a 40px button stays 40px on screen (`DEC-60`)
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
 - WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
@@ -185,7 +179,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 - **Page** (#ffffff): the page canvas. In dark, the sidebar shares the page surface (gray-950) so the border, not a fill change, separates them.
 - **Panel** (#f9fafb, gray-50): the sidebar panel and table header rows. Never a hover fill: a gray-50 hover is invisible on a gray-50 panel and in dark mode.
 - **Hover** (`--hover`, `bg-hover`): the one hover fill of every neutral control and row. It is a see-through state layer, gray-900 at 6% in light and white at 8% in dark, so a hover shows on white, on the gray-50 panel and on a dark card alike (owner, 2026-11-14).
-- **Tile** (#f3f4f6, gray-100): person avatars and mono chip backgrounds — tinted surfaces that stand for identity stay fixed neutral gray.
+- **Tile** (#f3f4f6, gray-100): person avatars and label pill backgrounds. Tinted surfaces that stand for identity stay fixed neutral gray.
 - **Hairline** (#e5e7eb, gray-200): card edges, row dividers, and other decorative hairlines; decoration, so 1.4.11 does not reach it. Dark mirror #1f2937 (gray-800).
 - **Control border** (#d1d5db, gray-300): the border of an empty list filter, a control that its text names (`czjw.102`).
 - **Input border** (#6b7280, gray-500, the `--input` variable): the input border. It is the boundary of a component, so it must hold 3:1 under 1.4.11, and it measures 4.89:1 on white.
@@ -203,7 +197,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 ### Named Rules
 
-**The One Ink Rule.** The tenant color appears in exactly four places: the primary button, the count pill, the active navigation row's text and icon, and the focus ring. In the dark theme the text, icon, and ring take the fixed brand-on-dark token instead. The sidebar panel and the page chrome never take it.
+**The One Ink Rule.** The tenant color appears in four places: the primary button, the count pill, the active navigation row's text and icon, and the focus ring. A text action takes it too: a link, the help trigger, a quick action (2026-11-26, `6wz1.106`). In the dark theme the text and icon take the fixed brand-on-dark token, and so does the ring. The sidebar panel and the page chrome never take it.
 
 **The No-Ramp Rule.** No tint ramp is derived from the tenant color. A hover or active state is the same color at reduced opacity — 90% on hover, 80% on press — never a derived shade. An identity or label surface (avatar, monogram tile, label pill) stays fixed neutral gray, so `packages/ui` needs no color-space computation.
 
@@ -217,7 +211,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 **Display Font:** Plus Jakarta Sans (system-ui fallback)
 **Body Font:** Plus Jakarta Sans (system-ui fallback)
-**Label/Mono Font:** JetBrains Mono (ui-monospace fallback), for identifiers only: hex values, permission keys, ids, and chips such as THIS DEVICE
+**Label/Mono Font:** JetBrains Mono (ui-monospace fallback), for identifiers only: hex values, permission keys, ids and codes. Counts, pagers, money and dates use the body font with tabular figures. A label pill such as THIS DEVICE is not mono.
 
 **Character:** one humanist sans doing everything, quietly; the mono face appears only to stamp an identifier, never for prose. Both faces are self-hosted in the image — subset to latin and latin-ext, `font-display: swap`, preload the one weight the sign-in page paints first — because a regulated customer can refuse an outbound request from the sign-in page. Only these two faces ship for now. The other approved families (IBM Plex Sans, Manrope, Source Serif 4) return with the Branding Typography tab. `packages/ui` ships the `@font-face` rules through a CSS export, preloads only the default face, and keeps `--font-sans` as the per-request seam.
 
@@ -228,7 +222,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 - **Heading** (600, 1.125rem / `text-lg`): card and section headings.
 - **Body** (400, 1rem / `text-base`): working text.
 - **Secondary** (400 or 500, 0.875rem / `text-sm`): navigation rows, menu items, helper text.
-- **Caption** (500–600, 0.75rem / `text-xs`; uppercase with wide tracking in group labels and mono chips): labels, pills, chips, counts, table headers.
+- **Caption** (500–600, 0.75rem / `text-xs`; uppercase with wide tracking in group labels): labels, pills, chips, counts, table headers.
 
 ### Named Rules
 
@@ -275,15 +269,14 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 - **Shape:** 8px radius; heights 32px (sm) / 36px from 1024px and 40px under it (md, the default, the same as a field) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
 - **Secondary:** white fill, gray-200 hairline, semibold gray-800 text (`--control-foreground`) and the Lift; in dark, a gray-900 fill, a gray-800 hairline and gray-100 text. **Danger outline:** the secondary look with red-600 text (red-400 in dark). **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
-- **Ghost primary:** the ghost button in brand text (`text-primary`, brand-on-dark in dark), semibold, with the `bg-hover` layer on hover. It is the help trigger, labelled or icon-only. Use it on a white surface only: over the gray-50 panel, brand text on the hover layer measures 4.37:1, so a brand-text action there keeps the underline hover of a link.
+- **Ghost primary:** the ghost button in brand text and icon (`text-primary` with `dark:text-brand-on-dark`), semibold, with the `bg-hover` layer on hover. It is the help trigger, labelled or icon-only. Use it on a white surface only: over the gray-50 panel, brand text on the hover layer measures 4.37:1, so a brand-text action there keeps the underline hover of a link.
 - **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; secondary, outline, ghost and danger-outline variants take the `bg-hover` state layer on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
 - **Disabled / Loading:** disabled is 50% opacity with `cursor-not-allowed` and no hover change; use `aria-disabled` instead of the `disabled` attribute when the control must stay focusable to explain why. Loading keeps the label and the width, replaces the leading icon with a spinner, sets `aria-busy="true"`, and ignores a second press. Any action that leaves the page or waits on the network uses the loading state (at least Publish, Save, Send test, the sign-in redirect).
 
 ### Chips
 
 - **Status pill:** tinted background, semibold small text. Active / Ready / Entitled emerald; Pending / Draft / Not entitled gray; Disabled / Down red; Maintenance / Stale amber.
-- **Label pill:** gray or blue, never a status color. Used for Admin portal, Notice, counts, type labels (Chat, Embedded), kind (System, Custom), source (Directory, Local).
-- **Mono chip:** JetBrains Mono 0.75rem medium, uppercase, wide tracking, gray-100 background, gray-700 text (dark: gray-800 / gray-300), full radius. For THIS DEVICE, WORKSPACE MEMBER, ADMINISTRATOR — never a status or blue color.
+- **Label pill:** gray or blue, never a status color. Used for Admin portal, Notice, counts, type labels (Chat, Embedded), kind (System, Custom), source (Directory, Local), and THIS DEVICE.
 - **Count pill:** brand fill, white text, in navigation for unread and grouped counts; caps at 99+.
 
 ### Segmented control

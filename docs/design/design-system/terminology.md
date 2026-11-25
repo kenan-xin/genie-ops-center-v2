@@ -11,6 +11,8 @@ tags:
 
 # Terminology
 
+Updated 2026-11-26 (follow-up 13 Phase 20): G9, G10, G12 and G13 follow the screens of beads `6wz1.110`, `d8l5.61` and `d8l5.62`, and the new entries G32 and G33 add the words of G2 change 4 that the owner approved on 2026-11-18 (P12-11).
+
 This file gives one word to each meaning on screen. A label, a message, an empty state and a confirm dialog use the word of its entry and never a banned word. A scan in `tools/workspace-validation` reads the two tables at the end of this file. In a path where an entry applies, a banned word fails the scan. The scan runs under `pnpm nx run @genie/workspace-validation:validate`.
 
 How to read an entry:
@@ -100,20 +102,20 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 ### G9. An assignment that does not apply now
 
 - Concept: a role or module assignment that exists but has no effect now.
-- Say: "Paused: <reason>", for example "Paused: Module off" or "Paused: Account suspended".
+- Say: "Paused: <reason>", for example "Paused: Module off" or "Paused: Person suspended". The reasons are "Group archived", "Person suspended" and "Module off".
 - Never: `not in effect`, `inactive`.
 - Applies in: all.
-- Source: owner 2026-11-14 15:19.
+- Source: owner 2026-11-14 15:19, G2 change 4 (P12-11).
 - Example: a role row shows "Paused: Module off", not "Inactive".
 
 ### G10. Who has a role or module
 
 - Concept: the people and groups a role or module is assigned to.
-- Say: "Assigned roles (n)" as the heading of a person's Roles tab and of a group's roles. "Assigned to" as a column, count or section, and "Not assigned to anyone". "Assigned via" with "Direct" or the group name. "Assigned <date> by <name>". "Manage in Access".
+- Say: "Assigned roles (n)" as the heading of a person's Roles tab and of a group's roles. "Assigned to" as a column, count or section, and "Not assigned to anyone". "Assigned via" with "Direct", the group name, or "<role> (role)" for a role that includes the module (A-2). In an assignments table the group reads "<group> (group)". "Assigned <date> by <name>", or "<date> at setup" for an assignment that setup wrote (P12-11). "Manage in Access".
 - Never: `holder`, `holders`, `who holds`, `nobody holds`, `no one holds`, `holds no role`, `holds no other role`, `holds no advanced role`, `hold no roles`, `you hold`, `what you hold`, `they hold`, `who can open it`, `given directly`, `direct assignment`, `change who has it`, `/\bgrant(?:s|ed|ing)?\b/`, that is "grant", "grants", "granted" or "granting" in lowercase.
 - Applies in: all.
-- Source: owner 2026-11-14 15:19, ADM-3, A-7, C05-4.
-- Note: the capitalised Access names "Grants" (the tab), "Granted" (the list) and "Grant to" stay until bead `d8l5.59` decides them. The ban is case-sensitive, so it passes those names and catches the word in a sentence. For giving access, say "gives access".
+- Source: owner 2026-11-14 15:19, ADM-3, A-2, A-7, C05-4, P11-4, P11-19.
+- Note: the capitalised Access names "Grants" (the tab), "Granted" (the list) and "Grant to" are kept by `d8l5.59` (P11-19). The ban is case-sensitive, so it passes those names and catches the word in a sentence. For giving access, say "gives access".
 - Example: an empty role shows "Not assigned to anyone", not "Nobody holds this role".
 
 ### G11. The access route of a role
@@ -128,19 +130,19 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 ### G12. Scope
 
 - Concept: which records an assignment covers.
-- Say: "All records", or the record id.
+- Say: "All records", or the record id. "One record" is the scope choice beside "All records".
 - Never: `whole tenant`, `everywhere`.
 - Applies in: all.
-- Source: owner 2026-11-14 15:19. It governs over Q1 (Phase 00 "Lines that govern").
+- Source: owner 2026-11-14 15:19. It governs over Q1 (Phase 00 "Lines that govern"). "One record": G2 change 4 (P12-11).
 - Example: the scope cell shows "All records", not "Whole tenant".
 
 ### G13. Role kinds
 
 - Concept: a role that ships with the product, and a role made here.
-- Say: "Built-in role" and "Custom role". The pill says "Built-in" or "Custom". "Copy as new role". The module of a core role is "Core".
+- Say: "Built-in role" and "Custom role". The Roles table pill says "Built-in" or "Custom". The role detail pill says "Built-in role" or "Custom role". "Copy as new role". The module of a core role is "Core".
 - Never: `system role`, `system roles`, `copy role`, `role from copy`, `core administration`.
 - Applies in: all.
-- Source: owner 2026-11-14 15:19, ADM-4, A-6.
+- Source: owner 2026-11-14 15:19, ADM-4, A-6, P11-6.
 - Example: the action is "Copy as new role", not "Copy role".
 
 ### G14. Groups
@@ -304,6 +306,24 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 - Applies in: none.
 - Source: Q1.
 - Example: the settings page keeps the title "Tenant settings".
+
+### G32. An empty person filter
+
+- Concept: the Person or group filter with nothing picked.
+- Say: "Anyone".
+- Never: none.
+- Applies in: none.
+- Source: G2 change 4 (P12-11).
+- Example: the Access Overview filter reads "Anyone" until a person or group is picked.
+
+### G33. A module's default role
+
+- Concept: the role a module gives when no other role is picked.
+- Say: the role name with "(default)" after it.
+- Never: none.
+- Applies in: none.
+- Source: G2 change 4 (P12-11).
+- Example: the role choice reads "Invoices and Payments viewer (default)".
 
 ## Banned words
 

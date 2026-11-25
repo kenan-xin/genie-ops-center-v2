@@ -536,6 +536,8 @@ Guard: the token layer is emitted from `tenant_branding` alone and the branding 
 
 Amended 2026-10-25 (DR-18): the text color for light surfaces is not built. Spec 3 R-14 and C-2 deferred it with the Typography tab, so the Branding page does not read a text color and it has no contrast pair. The one stored color besides `primary_color` is the sign-in background, `login_background_color`. It fills the sign-in page only, and it has a named surface and its own contrast pair, as the Revisit line asks of a second color (Spec 3 R-13, R-46).
 
+Amended 2026-11-26, the Admin portal label (owner, 2026-11-15, H2-6 of the follow-up 11 dry run, `cvij.7`): the Admin portal label is plain text, not a gray pill, as the build shows it (P04-5, Spec 3 R-9). The rule of the 2026-09-17 amendment is unchanged: every tinted surface stays a fixed neutral gray.
+
 Research behind this decision: `../design/research/theming-2026-09-17.md`.
 
 Designed in: Section 3. Implemented: Section 3 items 2 and 5. Design files affected: `design/sections/branding/` (specification, types, data), `design/design-system/tokens.md`, `design/shell/spec.md`. Revisit when a surface needs a second color; the change is `secondary_color` with a named surface and its own contrast pair, never an accent without a surface.
