@@ -502,6 +502,8 @@ test("Ask is in the main menu for a holder of Ask, and not for anyone else", asy
     await expect(page.locator("[data-shell-top-bar]")).toBeHidden();
   }
 
+  // An open Ask page sees the cleared session and opens the signed-out page, which aborts the next goto.
+  await page.goto("about:blank");
   await page.context().clearCookies();
   await signIn(page, ASK_PEOPLE.noAsk);
   await page.goto("/account");
